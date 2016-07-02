@@ -50,9 +50,9 @@ build_kernel() {
   mkdir -p $TOPDIR/build/kernel
   pushd $TOPDIR/git/kernel
     if [ ! -f $TOPDIR/build/kernel/.config ]; then
-      cp -v $TOPDIR/configs/kernel_defconfig $TOPDIR/git/kernel/arch/arm64/configs/defconfig
-      make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- O=$TOPDIR/build/kernel defconfig
-      git checkout $TOPDIR/git/kernel/arch/arm64/configs/defconfig
+      cp $TOPDIR/configs/kernel_defconfig $TOPDIR/git/kernel/arch/arm64/configs/tmp_defconfig
+      make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- O=$TOPDIR/build/kernel tmp_defconfig
+      rm $TOPDIR/git/kernel/arch/arm64/configs/tmp_defconfig
     fi
   popd
   pushd $TOPDIR/build/kernel
