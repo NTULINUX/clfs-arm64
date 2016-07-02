@@ -1,7 +1,6 @@
-tools
 build
-tarball
-source
-repo
+git
 out
-kernel
+tarball
+tools
+source
