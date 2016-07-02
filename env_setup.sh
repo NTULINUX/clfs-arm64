@@ -12,9 +12,6 @@ export SYSROOT=$TOOLDIR/root
 
 JOBS=$(cat /proc/cpuinfo | grep processor | wc -l)
 
-
-mkdir -p $TOPDIR/{tools,source,build,out,repo}
-
 gdb_attach() {
   aarch64-linux-gnu-gdb --command=./.gdb.cmd
 }
@@ -51,11 +48,11 @@ download_source() {
 
 build_kernel() {
   mkdir -p $TOPDIR/build/kernel
-  pushd $TOPDIR/kernel
+  pushd $TOPDIR/git/kernel
     if [ ! -f $TOPDIR/build/kernel/.config ]; then
-      ln -sf $TOPDIR/configs/kernel_defconfig $TOPDIR/kernel/arch/arm64/configs/defconfig
+      cp -v $TOPDIR/configs/kernel_defconfig $TOPDIR/git/kernel/arch/arm64/configs/defconfig
       make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- O=$TOPDIR/build/kernel defconfig
-      git checkout $TOPDIR/kernel/arch/arm64/configs/defconfig
+      git checkout $TOPDIR/git/kernel/arch/arm64/configs/defconfig
     fi
   popd
   pushd $TOPDIR/build/kernel
@@ -71,10 +68,10 @@ build_kernel() {
 build_qemu() {
   mkdir -p $TOPDIR/build/qemu
   pushd $TOPDIR/build/qemu
-    CFLAGS=-O2 $TOPDIR/source/qemu/configure \
+    CFLAGS=-O2 $TOPDIR/git/qemu/configure \
       --prefix=$TOOLDIR \
       --target-list=aarch64-softmmu \
-      --source-path=$TOPDIR/source/qemu || return 1
+      --source-path=$TOPDIR/git/qemu || return 1
     make -j${JOBS} || return 1
     make install
   popd
@@ -161,7 +158,7 @@ build_strace() {
 # sudo apt-get install zlib1g-dev
 build_toolchain() {
     ## kernel headers
-  pushd $TOPDIR/kernel
+  pushd $TOPDIR/git/kernel
     ARCH=arm64 CROSS_COMPILE= make INSTALL_HDR_PATH=$SYSROOT/usr headers_install
     CROSS_COMPILE= make mrproper
   popd

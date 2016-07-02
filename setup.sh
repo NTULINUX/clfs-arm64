@@ -29,28 +29,28 @@ while getopts ":ub" opt; do
   esac
 done
 
+mkdir -p $TOPDIR/{tools,build,out,git,source}
+
 # check if any package source code is missing
 download_source || die "download_source"
 
 # Download qemu source code
-if [ ! -d $TOPDIR/repo/qemu ]; then
-  cd $TOPDIR/repo
+if [ ! -d $TOPDIR/git/qemu ]; then
+  cd $TOPDIR/git
   git clone git://git.qemu-project.org/qemu.git || die "clone qemu"
-fi
-if [ ! -e $TOPDIR/source/qemu ]; then
-  cd $TOPDIR/source
-  ln -sf ../repo/qemu
-  cd $TOPDIR
+  cd -
 fi
 
 # Download linux kernel code
-if [ ! -d kernel ]; then
+if [ ! -d $TOPDIR/git/kernel ]; then
+  cd $TOPDIR/git
   git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git kernel || die "clone kernel"
+  cd -
 fi
 
 if [ $FORCE_UPDATE -eq 1 ]; then
-  do_update kernel
-  do_update source/qemu
+  do_update git/kernel
+  do_update git/qemu
 fi
 
 # build toolchain
