@@ -4,6 +4,7 @@
 
 FORCE_UPDATE=0
 FORCE_BUILD=0
+BUILD_OPTEE=1
 
 usage() {
   echo "usage: $0 [-u] [-b]"
@@ -46,6 +47,22 @@ if [ ! -d $TOPDIR/git/kernel ]; then
   cd $TOPDIR/git
   git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git kernel || die "clone kernel"
   cd -
+fi
+
+if [ $BUILD_OPTEE -eq 1 ]; then
+  pushd $TOPDIR/git
+  test -d optee_os || git clone https://github.com/OP-TEE/optee_os.git || die "clone optee_os"
+  test -d optee_client || git clone https://github.com/OP-TEE/optee_client.git || die "optee_client"
+  test -d optee_test || git clone https://github.com/OP-TEE/optee_test.git || die "optee_test"
+  cd kernel
+  git branch | grep optee &> /dev/null
+  if [ $? -ne 0 ]; then
+    git remove add linaro-swg https://github.com/linaro-swg/linux.git
+    git fetch linaro-swg
+    git checkout -b optee linaro-swg/optee
+  fi
+  git checkout optee
+  popd
 fi
 
 if [ $FORCE_UPDATE -eq 1 ]; then
