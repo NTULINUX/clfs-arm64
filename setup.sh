@@ -4,7 +4,7 @@
 
 FORCE_UPDATE=0
 FORCE_BUILD=0
-BUILD_OPTEE=1
+BUILD_OPTEE=0
 
 usage() {
   echo "usage: $0 [-u] [-b]"
@@ -57,7 +57,7 @@ if [ $BUILD_OPTEE -eq 1 ]; then
   cd kernel
   git branch | grep optee &> /dev/null
   if [ $? -ne 0 ]; then
-    git remove add linaro-swg https://github.com/linaro-swg/linux.git
+    git remote add linaro-swg https://github.com/linaro-swg/linux.git
     git fetch linaro-swg
     git checkout -b optee linaro-swg/optee
   fi
