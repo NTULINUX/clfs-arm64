@@ -378,9 +378,12 @@ build_busybox() {
     echo "mount -t debugfs debugfs /sys/kernel/debug" >> $SYSTEM/etc/init.d/rcS
     echo "echo /sbin/mdev > /proc/sys/kernel/hotplug" >> $SYSTEM/etc/init.d/rcS
     echo "mdev -s" >> $SYSTEM/etc/init.d/rcS
-    echo "ln -sf /dev/null /dev/tty2" >> $SYSTEM/etc/init.d/rcS
-    echo "ln -sf /dev/null /dev/tty3" >> $SYSTEM/etc/init.d/rcS
-    echo "ln -sf /dev/null /dev/tty4" >> $SYSTEM/etc/init.d/rcS
+    grep 'CONFIG_VT' $TOPDIR/build/kernel/.config &> /dev/null
+    if [ $? -ne 0 ]; then
+      echo "ln -sf /dev/null /dev/tty2" >> $SYSTEM/etc/init.d/rcS
+      echo "ln -sf /dev/null /dev/tty3" >> $SYSTEM/etc/init.d/rcS
+      echo "ln -sf /dev/null /dev/tty4" >> $SYSTEM/etc/init.d/rcS
+    fi
     chmod +x $SYSTEM/etc/init.d/rcS
   popd
 }
