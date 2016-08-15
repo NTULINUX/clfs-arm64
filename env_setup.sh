@@ -417,6 +417,18 @@ new_disk() {
 
 ## optee build script
 
+build_arm_trusted_firmware() {
+  if [ ! -d $TOPDIR/git/arm-trusted-firmware ]; then
+    git clone https://github.com/ARM-software/arm-trusted-firmware.git || return 1
+  fi
+
+  mkdir -p $TOPDIR/build/arm-trusted-firmware
+  # doesn't support O=??
+  RESET_TO_BL31=1 \
+  PLAT=qemu \
+  make -C $TOPDIR/git/arm-trusted-firmware all
+}
+
 # sudo apt-get install gcc-arm-linux-gnueabihf
 # It should be possible not to build arm binaries.
 build_optee_os() {
@@ -433,3 +445,14 @@ build_optee_os() {
   ARCH=arm \
   make -C $TOPDIR/git/optee_os O=$TOPDIR/build/optee_os V=0 DEBUG=1 CFG_TEE_CORE_LOG_LEVEL=4 all
 }
+
+
+
+#build_optee_client() {
+#  if [ ! -d $TOPDIR/git/optee_client ]; then
+#    git clone https://github.com/OP-TEE/optee_client.git || return 1
+#  fi
+#
+#  mkdir -p $TOPDIR/build/optee_client
+#  make -C $TOPDIR/git/optee_client O=$TOPDIR/build/optee_client all
+#}

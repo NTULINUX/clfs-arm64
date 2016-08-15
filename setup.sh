@@ -4,7 +4,7 @@
 
 FORCE_UPDATE=0
 FORCE_BUILD=0
-BUILD_OPTEE=0
+BUILD_OPTEE=1
 
 usage() {
   echo "usage: $0 [-u] [-b]"
@@ -54,6 +54,7 @@ if [ $BUILD_OPTEE -eq 1 ]; then
   test -d optee_os || git clone https://github.com/OP-TEE/optee_os.git || die "clone optee_os"
   test -d optee_client || git clone https://github.com/OP-TEE/optee_client.git || die "optee_client"
   test -d optee_test || git clone https://github.com/OP-TEE/optee_test.git || die "optee_test"
+  test -d arm-trusted-firmware || git clone https://github.com/ARM-software/arm-trusted-firmware.git || die "arm-trusted-firmware.git"
   cd kernel
   git branch | grep optee &> /dev/null
   if [ $? -ne 0 ]; then
