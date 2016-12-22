@@ -568,7 +568,7 @@ build_ncurses() {
     make -j${JOBS} || return 1
     make install
     cd $SYSROOT/usr/lib64
-    ln -sf libncurses.so.6 libcurses.so
+    ln -sf libncursesw.so.6 libcurses.so
     ln -sf libmenu.so.6.0 libmenu.so
     ln -sf libpanel.so.6.0 libpanel.so
     ln -sf libform.so.6 libform.so
