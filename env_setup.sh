@@ -33,6 +33,26 @@ download_source() {
     "http://downloads.sourceforge.net/project/strace/strace/4.11/strace-4.11.tar.xz" \
     "https://github.com/bminor/binutils-gdb/archive/gdb-7.11-release.tar.gz" \
     "http://busybox.net/downloads/busybox-1.24.2.tar.bz2" \
+    "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
+    "http://download.savannah.gnu.org/releases/sysvinit/sysvinit-2.88dsf.tar.bz2" \
+    "http://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz" \
+    "http://patches.clfs.org/dev/coreutils-8.23-noman-1.patch" \
+    "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.tar.xz" \
+    "http://zlib.net/zlib-1.2.8.tar.xz" \
+    "https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.25.tar.xz" \
+    "http://pkg-shadow.alioth.debian.org/releases/shadow-4.2.1.tar.xz" \
+    "http://dev.gentoo.org/~blueness/eudev/eudev-1.7.tar.gz" \
+    "http://ftp.gnu.org/gnu/findutils/findutils-4.6.0.tar.gz" \
+    "http://ftp.gnu.org/gnu/grep/grep-2.23.tar.xz" \
+    "ftp://ftp.kernel.org/pub/linux/utils/kbd/kbd-2.0.3.tar.xz" \
+    "https://github.com/libcheck/check/archive/0.10.0.tar.gz" \
+    "http://www.linux-pam.org/library/Linux-PAM-1.2.1.tar.gz" \
+    "http://clfs.org/files/packages/3.0.0/SYSVINIT/bootscripts-cross-lfs-3.0-20140710.tar.xz" \
+    "ftp://ftp.vim.org/pub/vim/unix/vim-7.4.tar.bz2" \
+    "http://ftp.gnu.org/gnu/gzip/gzip-1.6.tar.xz" \
+    "https://github.com/file/file/archive/FILE5_25.tar.gz" \
+    "http://ftp.gnu.org/gnu/sed/sed-4.2.2.tar.bz2" \
+    "http://ftp.gnu.org/gnu/gawk/gawk-4.1.3.tar.xz" \
   )
   mkdir -p $TOPDIR/tarball
   pushd $TOPDIR/tarball
@@ -124,14 +144,14 @@ clean_build_env() {
 }
 
 build_ltp() {
-  if [ ! -d $TOPDIR/repo/ltp ]; then
-    pushd $TOPDIR/repo
+  if [ ! -d $TOPDIR/git/ltp ]; then
+    pushd $TOPDIR/git
     git clone https://github.com/linux-test-project/ltp.git
     popd
   fi
   if [ ! -e $TOPDIR/source/ltp ]; then
     pushd $TOPDIR/source
-    ln -sf ../repo/ltp
+    ln -sf ../git/ltp
     popd
   fi
   pushd $TOPDIR/source/ltp
@@ -293,6 +313,18 @@ build_toolchain() {
     make -j${JOBS} || return 1
     make install || return 1
   popd
+
+  if [ ! -d $TOPDIR/source/file-FILE5_25 ]; then
+    tar -xzf $TOPDIR/tarball/FILE5_25.tar.gz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/file-FILE5_25
+    autoreconf --force --install
+    ./configure \
+    --prefix=$TOOLDIR || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    make distclean
+  popd
 }
 
 build_gcc () {
@@ -325,11 +357,11 @@ build_bash() {
 
   mkdir -p $TOPDIR/build/bash
   pushd $TOPDIR/build/bash
-    $TOPDIR/source/bash-4.4-rc1/configure --host=$CLFS_TARGET --prefix=$SYSTEM/usr || return 1
+    $TOPDIR/source/bash-4.4-rc1/configure --host=$CLFS_TARGET --prefix=$SYSROOT/usr || return 1
     make -j${JOBS} || return 1
     make install
-    mv -v $SYSTEM/usr/bin/bash $SYSTEM/bin/
-    cd $SYSTEM/bin && ln -sf bash sh
+    mv -v $SYSROOT/usr/bin/bash $SYSROOT/bin/
+    cd $SYSROOT/bin && ln -sf bash sh
   popd
 }
 
@@ -385,6 +417,363 @@ build_busybox() {
       echo "ln -sf /dev/null /dev/tty4" >> $SYSTEM/etc/init.d/rcS
     fi
     chmod +x $SYSTEM/etc/init.d/rcS
+  popd
+}
+
+build_coreutils() {
+  if [ ! -d $TOPDIR/source/coreutils-8.23 ]; then
+    tar -xf $TOPDIR/tarball/coreutils-8.23.tar.xz -C $TOPDIR/source
+    pushd $TOPDIR/source/coreutils-8.23
+    patch -p1 < $TOPDIR/tarball/coreutils-8.23-noman-1.patch
+    popd
+  fi
+
+  mkdir -p $TOPDIR/build/coreutils
+  pushd $TOPDIR/build/coreutils
+    $TOPDIR/source/coreutils-8.23/configure --host=$CLFS_TARGET --prefix=$SYSROOT/usr || return 1
+    make -j${JOBS} || return 1
+    make install
+    mv -v $SYSROOT/usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo,false,ln,ls,mkdir,mknod,mv,pwd,rm,rmdir,stty,sync,true,uname,chroot,head,sleep,nice,test,[} $SYSROOT/bin/
+  popd
+}
+
+build_zlib() {
+  if [ ! -d $TOPDIR/source/zlib-1.2.8 ]; then
+    tar -xf $TOPDIR/tarball/zlib-1.2.8.tar.xz -C $TOPDIR/source
+  fi
+
+  pushd $TOPDIR/source/zlib-1.2.8
+  $TOPDIR/source/zlib-1.2.8/configure \
+      --prefix=$SYSROOT/usr/ \
+      --libdir=$SYSROOT/usr/lib64 \
+    || return 1
+    make -j${JOBS} || return 1
+    make install
+  popd
+}
+
+build_sysvinit() {
+  if [ ! -d $TOPDIR/source/sysvinit-2.88dsf ]; then
+    tar -xjf $TOPDIR/tarball/sysvinit-2.88dsf.tar.bz2 -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/sysvinit-2.88dsf
+    make CC=${CROSS_COMPILE}gcc LDFLAGS=-lcrypt -j${JOBS} || return 1
+    mv -v src/{init,halt,shutdown,runlevel,killall5,fstab-decode,sulogin,bootlogd} $SYSTEM/sbin/
+    mv -v src/mountpoint $SYSTEM/bin/
+    mv -v src/{last,mesg,utmpdump,wall} $SYSTEM/usr/bin/
+  popd
+}
+
+build_libcap() {
+  if [ ! -d $TOPDIR/source/libcap-2.25 ]; then
+      tar -xf $TOPDIR/tarball/libcap-2.25.tar.xz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/libcap-2.25
+    cp $TOPDIR/misc/libcap-Make.Rules Make.Rules
+    make
+    cp libcap/libcap.so*    $SYSROOT/usr/lib64/
+    cp libcap/include/sys/* $SYSROOT/usr/include/sys/
+  popd
+}
+
+# sudo apt-get install libtool-bin
+build_procps() {
+  if [ ! -d $TOPDIR/git/procps ]; then
+    pushd $TOPDIR/git
+    git clone https://gitlab.com/procps-ng/procps.git
+    popd
+  fi
+  if [ ! -e TOPDIR/source/procps ]; then
+    pushd $TOPDIR/source
+    ln -sf ../git/procps
+    popd
+  fi
+  pushd $TOPDIR/source/procps
+    sed -i '/^AC_FUNC_MALLOC$/d;/^AC_FUNC_REALLOC$/d' configure.ac
+    make clean
+    ./autogen.sh || return 1
+    LDFLAGS=-ltinfo ./configure --host=$CLFS_TARGET --prefix=$SYSTEM/usr --libdir=$SYSTEM/usr/lib64 || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_eudev() {
+  if [ ! -d $TOPDIR/source/eudev-1.7 ]; then
+    tar -xzf $TOPDIR/tarball/eudev-1.7.tar.gz -C $TOPDIR/source
+    sed -i '1i\#include <stdint.h>' $TOPDIR/source/eudev-1.7/src/mtd_probe/mtd_probe.h
+  fi
+  mkdir -p $TOPDIR/build/eudev
+  pushd $TOPDIR/build/eudev
+    $TOPDIR/source/eudev-1.7/configure --host=$CLFS_TARGET \
+    --prefix=$SYSTEM \
+    --disable-introspection \
+    --disable-gtk-doc-html \
+    --disable-gudev \
+    --disable-keymap || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    cd $SYSTEM/sbin && ln -sf ../bin/udevadm
+  popd
+}
+
+build_find() {
+  if [ ! -d $TOPDIR/source/findutils-4.6.0 ]; then
+    tar -xzf $TOPDIR/tarball/findutils-4.6.0.tar.gz -C $TOPDIR/source
+  fi
+  mkdir -p $TOPDIR/build/find
+  pushd $TOPDIR/build/find
+    echo "gl_cv_func_wcwidth_works=yes" > config.cache
+    echo "ac_cv_func_fnmatch_gnu=yes" >> config.cache
+    $TOPDIR/source/findutils-4.6.0/configure --host=$CLFS_TARGET \
+    --prefix=$SYSTEM \
+    --cache-file=config.cache || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_grep() {
+  if [ ! -d $TOPDIR/source/grep-2.23 ]; then
+    tar -xf $TOPDIR/tarball/grep-2.23.tar.xz -C $TOPDIR/source
+  fi
+  mkdir -p $TOPDIR/build/grep
+  pushd $TOPDIR/build/grep
+    $TOPDIR/source/grep-2.23/configure --host=$CLFS_TARGET \
+    --prefix=$SYSTEM \
+    || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_ncurses() {
+  if [ ! -d $TOPDIR/source/ncurses-6.0 ]; then
+      tar -xzf $TOPDIR/tarball/ncurses-6.0.tar.gz -C $TOPDIR/source
+  fi
+  mkdir -p $TOPDIR/build/ncurses
+  pushd $TOPDIR/build/ncurses
+    AWK=gawk $TOPDIR/source/ncurses-6.0/configure \
+      --build=$CLFS_HOST \
+      --host=$CLFS_TARGET \
+      --prefix=$SYSROOT/usr  \
+      --libdir=$SYSROOT/usr/lib64 \
+      --with-termlib=tinfo \
+      --without-ada \
+      --without-debug \
+      --enable-overwrite \
+      --enable-widec \
+      --with-build-cc=gcc \
+      --with-shared || return 1
+    make -j${JOBS} || return 1
+    make install
+    cd $SYSROOT/usr/lib64
+    ln -sf libncurses.so.6 libcurses.so
+    ln -sf libmenu.so.6.0 libmenu.so
+    ln -sf libpanel.so.6.0 libpanel.so
+    ln -sf libform.so.6 libform.so
+    ln -sf libtinfo.so.6.0 libtinfo.so
+  popd
+}
+
+# sudo apt-get install autoconf2.13
+# sudo apt-get install autopoint
+build_shadow() {
+  if [ ! -d $TOPDIR/source/shadow-4.2.1 ]; then
+    tar -xf $TOPDIR/tarball/shadow-4.2.1.tar.xz -C $TOPDIR/source
+  fi
+
+  pushd $TOPDIR/source/shadow-4.2.1
+    make clean
+    autoreconf -v -f --install
+    echo 'shadow_cv_passwd_dir=${SYSTEM}/bin' > config.cache
+    ./configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSTEM/usr \
+    --sysconfdir=$SYSTEM/etc \
+    --enable-maintainer-mode \
+    --disable-nls \
+    --enable-subordinate-ids=no \
+    --cache-file=config.cache || return 1
+    echo "#define ENABLE_SUBIDS 1" >> config.h
+    make || return 1
+    make install
+  popd
+}
+
+build_file() {
+  if [ ! -d $TOPDIR/source/file-FILE5_25 ]; then
+    tar -xzf $TOPDIR/tarball/FILE5_25.tar.gz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/file-FILE5_25
+    autoreconf --force --install
+    ./configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSTEM/usr || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    make distclean
+  popd
+}
+
+build_pam() {
+  if [ ! -d $TOPDIR/source/Linux-PAM-1.2.1 ]; then
+    tar -xzf $TOPDIR/tarball/Linux-PAM-1.2.1.tar.gz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/Linux-PAM-1.2.1/
+    make clean
+    ./configure --host=$CLFS_TARGET \
+    --disable-nis \
+    --prefix=$SYSROOT/usr \
+    --libdir=$SYSROOT/usr/lib64 || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    mkdir -p $SYSROOT/usr/include/security
+    cd $SYSROOT/usr/include/security
+    for i in $(ls ../{pam*,_pam*}); do ln -sf $i; done
+  popd
+}
+
+build_check() {
+  if [ ! -d $TOPDIR/source/check-0.10.0 ]; then
+    tar -xzf $TOPDIR/tarball/0.10.0.tar.gz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/check-0.10.0
+    autoreconf --force --install
+    ./configure --host=$CLFS_TARGET \
+    --prefix=$SYSROOT/usr \
+    --libdir=$SYSROOT/usr/lib64 || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_kbd() {
+  if [ ! -d $TOPDIR/source/kbd-2.0.3 ]; then
+    tar -xf $TOPDIR/tarball/kbd-2.0.3.tar.xz -C $TOPDIR/source
+    # fix cross-compiled setfont can't find font file issue
+    sed -i 's:DATADIR:"/lib/kbd":g' $TOPDIR/source/kbd-2.0.3/src/*.c
+  fi
+  mkdir -p $TOPDIR/build/kbd
+  pushd $TOPDIR/build/kbd
+    PKG_CONFIG_LIBDIR=$SYSROOT/usr/lib64/pkgconfig \
+    CPPFLAGS="-I$SYSROOT/usr/include" \
+    $TOPDIR/source/kbd-2.0.3/configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSROOT/usr \
+    --datadir=$SYSROOT/lib/kbd \
+    || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    mv -v $SYSROOT/usr/bin/{kbd_mode,loadkeys,openvt,setfont} $SYSROOT/bin
+  popd
+}
+
+build_util_linux() {
+  if [ ! -d $TOPDIR/source/util-linux-2.29 ]; then
+    tar -xf $TOPDIR/tarball/util-linux-2.29.tar.xz -C $TOPDIR/source/
+  fi
+
+  mkdir -p $TOPDIR/build/util-linux
+  pushd $TOPDIR/build/util-linux
+    $TOPDIR/source/util-linux-2.29/configure \
+      --host=$CLFS_TARGET \
+      --prefix=$SYSROOT/usr \
+      --libdir=$SYSROOT/usr/lib64 \
+      --with-bashcompletiondir=$SYSROOT/usr/share/bash-completion/completions \
+      --without-python \
+      --disable-wall \
+      --disable-eject \
+      || return 1
+    make -j${JOBS} || return 1
+    make install
+  popd
+}
+
+build_gzip() {
+  if [ ! -d $TOPDIR/source/gzip-1.6 ]; then
+    tar -xf $TOPDIR/tarball/gzip-1.6.tar.xz -C $TOPDIR/source
+  fi
+  mkdir -p $TOPDIR/build/gzip
+  pushd $TOPDIR/build/gzip
+    $TOPDIR/source/gzip-1.6/configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSTEM/usr \
+    --bindir=$SYSTEM/bin \
+    || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_sed() {
+  if [ ! -d $TOPDIR/source/sed-4.2.2 ]; then
+    tar -xjf $TOPDIR/tarball/sed-4.2.2.tar.bz2 -C $TOPDIR/source
+  fi
+  mkdir -p $TOPDIR/build/sed
+  pushd $TOPDIR/build/sed
+    $TOPDIR/source/sed-4.2.2/configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSTEM/usr \
+    --bindir=$SYSTEM/bin \
+    || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_awk() {
+  if [ ! -d $TOPDIR/source/gawk-4.1.3 ]; then
+    tar -xf $TOPDIR/tarball/gawk-4.1.3.tar.xz -C $TOPDIR/source
+  fi
+  mkdir -p $TOPDIR/build/awk
+  pushd $TOPDIR/build/awk
+    $TOPDIR/source/gawk-4.1.3/configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSTEM/usr \
+    --bindir=$SYSTEM/bin \
+    || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_bootscript() {
+  if [ ! -d $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710 ]; then
+    tar -xf $TOPDIR/tarball/bootscripts-cross-lfs-3.0-20140710.tar.xz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710
+    DESTDIR=$SYSTEM make install-bootscripts
+    ## HACK! ##
+    sed -i '20i\ldconfig' $SYSTEM/etc/rc.d/init.d/rc
+    sed -i '$i\bash' $SYSTEM/etc/rc.d/init.d/rc
+  popd
+}
+
+build_vim() {
+  if [ ! -d $TOPDIR/source/vim74 ]; then
+    tar -xjf $TOPDIR/tarball/vim-7.4.tar.bz2 -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/vim74
+    ./configure \
+    --build=$CLFS_HOST \
+    --host=$CLFS_TARGET \
+    --target=$CLFS_TARGET \
+    --prefix=$SYSTEM/usr \
+    --with-tlib=tinfo \
+    vim_cv_toupper_broken=y \
+    vim_cv_terminfo=y \
+    vim_cv_tty_group=y \
+    vim_cv_tty_mode=y \
+    vim_cv_getcwd_broken=y \
+    vim_cv_stat_ignores_slash=y \
+    vim_cv_bcopy_handles_overlap=y \
+    vim_cv_memmove_handles_overlap=y \
+    vim_cv_memcpy_handles_overlap=y || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    cd $SYSTEM/usr/bin
+    ln -sf vim vi
   popd
 }
 
