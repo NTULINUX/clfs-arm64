@@ -492,7 +492,7 @@ build_procps() {
     sed -i '/^AC_FUNC_MALLOC$/d;/^AC_FUNC_REALLOC$/d' configure.ac
     make clean
     ./autogen.sh || return 1
-    LDFLAGS=-ltinfo ./configure --host=$CLFS_TARGET --prefix=$SYSTEM/usr --libdir=$SYSTEM/usr/lib64 || return 1
+    LDFLAGS=-ltinfo ./configure --host=$CLFS_TARGET --prefix=$SYSROOT/usr --libdir=$SYSROOT/usr/lib64 || return 1
     make -j${JOBS} || return 1
     make install || return 1
   popd
@@ -568,10 +568,11 @@ build_ncurses() {
     make -j${JOBS} || return 1
     make install
     cd $SYSROOT/usr/lib64
-    ln -sf libncursesw.so.6 libcurses.so
-    ln -sf libmenu.so.6.0 libmenu.so
-    ln -sf libpanel.so.6.0 libpanel.so
-    ln -sf libform.so.6 libform.so
+    ln -sf libncursesw.so.6.0 libncurses.so
+# if without --enable-widec
+#    ln -sf libmenu.so.6.0 libmenu.so
+#    ln -sf libpanel.so.6.0 libpanel.so
+#    ln -sf libform.so.6 libform.so
     ln -sf libtinfo.so.6.0 libtinfo.so
   popd
 }
