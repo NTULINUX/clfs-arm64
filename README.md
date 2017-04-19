@@ -52,8 +52,9 @@ clfs 指的是 cross linux from scratch。意思就是从0编译出整个 linux 
 
         To find a missing package name:
         dnf whatprovides */<program>
+
 - ubuntu:
-    apt-get install libglib2.0-dev libpixman-1-dev libfdt-dev zlib1g-dev texinfo bison flex gawk autoconf autopoint
+    apt-get install libglib2.0-dev libpixman-1-dev libfdt-dev zlib1g-dev texinfo bison flex gawk autoconf autopoint libncurses5-dev build-essential
 
 
 ### 其他
