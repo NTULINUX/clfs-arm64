@@ -1,0 +1,4 @@
+
+- enable kdump, so can use crash to debug.
+- cleanup, keep source code from GNU only.
+
