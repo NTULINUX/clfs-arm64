@@ -20,8 +20,6 @@ croot() {
   cd $TOPDIR
 }
 
-
-
 download_source() {
   declare -a tarball_list=( \
     "ftp://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.bz2" \
@@ -31,12 +29,16 @@ download_source() {
     "http://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz" \
     "https://ftp.gnu.org/gnu/libc/glibc-2.25.tar.bz2" \
     "https://ftp.gnu.org/gnu/gperf/gperf-3.1.tar.gz" \
+    "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz" \
+    "https://ftp.gnu.org/gnu/automake/automake-1.15.tar.xz" \
+    "ftp://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz" \
     "http://ftp.gnu.org/gnu/bash/bash-4.4-rc1.tar.gz" \
     "http://downloads.sourceforge.net/project/strace/strace/4.11/strace-4.11.tar.xz" \
     "https://github.com/bminor/binutils-gdb/archive/gdb-7.11-release.tar.gz" \
     "http://busybox.net/downloads/busybox-1.24.2.tar.bz2" \
     "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
     "https://ftp.gnu.org/gnu/coreutils/coreutils-8.27.tar.xz" \
+    "http://www.linuxfromscratch.org/patches/downloads/coreutils/coreutils-8.27-i18n-1.patch" \
     "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.tar.xz" \
     "http://zlib.net/zlib-1.2.8.tar.xz" \
     "https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.25.tar.xz" \
@@ -309,16 +311,43 @@ build_toolchain() {
     make install || return 1
   popd
 
-  if [ ! -d $TOPDIR/source/coreutils-8.27 ]; then
-    tar -xf $TOPDIR/tarball/coreutils-8.27.tar.xz -C $TOPDIR/source
+  if [ ! -d $TOPDIR/source/autoconf-2.69 ]; then
+    tar -xf $TOPDIR/tarball/autoconf-2.69.tar.xz -C $TOPDIR/source
+    tar -xf $TOPDIR/tarball/automake-1.15.tar.xz -C $TOPDIR/source
+    tar -xf $TOPDIR/tarball/libtool-2.4.6.tar.xz -C $TOPDIR/source
   fi
 
-  mkdir -p $TOPDIR/build/coreutils
-  pushd $TOPDIR/build/coreutils
-    $TOPDIR/source/coreutils-8.27/configure --host=$CLFS_HOST --prefix=$TOOLDIR || return 1
+  mkdir -p $TOPDIR/build/autoconf
+  pushd $TOPDIR/build/autoconf
+    $TOPDIR/source/autoconf-2.69/configure \
+      --prefix=$TOOLDIR \
+      --host=$CLFS_HOST \
+      --target=$CLFS_TARGET \
+      || return 1
     make -j${JOBS} || return 1
-    make install
+    make install || return 1
   popd
+  mkdir -p $TOPDIR/build/automake
+  pushd $TOPDIR/build/automake
+    $TOPDIR/source/automake-1.15/configure \
+      --prefix=$TOOLDIR \
+      --host=$CLFS_HOST \
+      --target=$CLFS_TARGET \
+      || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+  mkdir -p $TOPDIR/build/libtool
+  pushd $TOPDIR/build/libtool
+    $TOPDIR/source/libtool-2.4.6/configure \
+      --prefix=$TOOLDIR \
+      --host=$CLFS_HOST \
+      --target=$CLFS_TARGET \
+      || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+
 }
 
 build_gcc () {
@@ -417,12 +446,17 @@ build_busybox() {
 build_coreutils() {
   if [ ! -d $TOPDIR/source/coreutils-8.27 ]; then
     tar -xf $TOPDIR/tarball/coreutils-8.27.tar.xz -C $TOPDIR/source
+    pushd $TOPDIR/source/coreutils-8.27
+      patch -Np1 -i $TOPDIR/tarball/coreutils-8.27-i18n-1.patch
+      sed -i '/test.lock/s/^/#/' gnulib-tests/gnulib.mk
+    popd
   fi
 
-  rm -rf $TOPDIR/build/coreutils
   mkdir -p $TOPDIR/build/coreutils
   pushd $TOPDIR/build/coreutils
-    $TOPDIR/source/coreutils-8.27/configure --host=$CLFS_TARGET --prefix=$SYSROOT/usr || return 1
+    $TOPDIR/source/coreutils-8.27/configure \
+       --host=$CLFS_TARGET --prefix=$SYSROOT/usr \
+       --enable-no-install-program=kill,uptime || return 1
     make -j${JOBS} || return 1
     make install
     mv -v $SYSROOT/usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo,false,ln,ls,mkdir,mknod,mv,pwd,rm,rmdir,stty,sync,true,uname,chroot,head,sleep,nice,test,[} $SYSROOT/bin/

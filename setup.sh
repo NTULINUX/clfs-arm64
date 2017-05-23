@@ -73,15 +73,15 @@ fi
 if [ ! -f $SYSIMG ]; then
   mkdir -p $SYSTEM/{bin,sbin,etc,run,dev,tmp,sys,proc,mnt,var,home,root,lib,usr/lib}
   prepare_build_env
-  test -f $SYSROOT/usr/lib64/libz.so || build_zlib || die "build_zlib"
+#  test -f $SYSROOT/usr/lib64/libz.so || build_zlib || die "build_zlib"
 #  test -f $SYSROOT/usr/lib64/libcheck.so || build_check || die "build_check"
-  test -f $SYSROOT/usr/lib64/libpam.so || build_pam || die "build_pam"
-  test -f $SYSROOT/usr/lib64/libcap.so || build_libcap || die "build_libcap"
-  test -f $SYSROOT/usr/lib64/libncursesw.so.6.0 || build_ncurses || die "build_ncurses"
+#  test -f $SYSROOT/usr/lib64/libpam.so || build_pam || die "build_pam"
+#  test -f $SYSROOT/usr/lib64/libcap.so || build_libcap || die "build_libcap"
+#  test -f $SYSROOT/usr/lib64/libncursesw.so.6.0 || build_ncurses || die "build_ncurses"
 #  test -f $SYSROOT/usr/bin/loadkeys || build_kbd || die "build_kbd"
 #  test -f $SYSROOT/usr/bin/yes || build_coreutils || die "build_coreutils"
   test -f $SYSROOT/usr/bin/bash ||  build_bash || die "build_bash"
-  test -f $SYSROOT/usr/sbin/agetty || build_util_linux || die "build_util_linux"
+#  test -f $SYSROOT/usr/sbin/agetty || build_util_linux || die "build_util_linux"
 #  test -f $SYSROOT/usr/bin/ps || build_procps || die "build_procps"
   test -f $SYSTEM/usr/bin/strace ||  build_strace || die "build_strace"
   test -f $SYSTEM/bin/find || build_find || die "build_find"
