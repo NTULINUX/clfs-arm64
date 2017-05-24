@@ -39,7 +39,7 @@ download_source() {
     "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
     "https://ftp.gnu.org/gnu/coreutils/coreutils-8.27.tar.xz" \
     "http://www.linuxfromscratch.org/patches/downloads/coreutils/coreutils-8.27-i18n-1.patch" \
-    "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.tar.xz" \
+    "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.2.tar.xz" \
     "http://zlib.net/zlib-1.2.8.tar.xz" \
     "https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.25.tar.xz" \
     "http://ftp.gnu.org/gnu/findutils/findutils-4.6.0.tar.gz" \
@@ -449,6 +449,7 @@ build_coreutils() {
     pushd $TOPDIR/source/coreutils-8.27
       patch -Np1 -i $TOPDIR/tarball/coreutils-8.27-i18n-1.patch
       sed -i '/test.lock/s/^/#/' gnulib-tests/gnulib.mk
+      sed -i 's/\$(srcdir)\/man\/help2man/& --no-discard-stderr/' Makefile.in
     popd
   fi
 
@@ -542,6 +543,7 @@ build_grep() {
   popd
 }
 
+# for building util-linux
 build_ncurses() {
   if [ ! -d $TOPDIR/source/ncurses-6.0 ]; then
       tar -xzf $TOPDIR/tarball/ncurses-6.0.tar.gz -C $TOPDIR/source
@@ -626,13 +628,13 @@ build_kbd() {
 }
 
 build_util_linux() {
-  if [ ! -d $TOPDIR/source/util-linux-2.29 ]; then
-    tar -xf $TOPDIR/tarball/util-linux-2.29.tar.xz -C $TOPDIR/source/
+  if [ ! -d $TOPDIR/source/util-linux-2.29.2 ]; then
+    tar -xf $TOPDIR/tarball/util-linux-2.29.2.tar.xz -C $TOPDIR/source/
   fi
 
   mkdir -p $TOPDIR/build/util-linux
   pushd $TOPDIR/build/util-linux
-    $TOPDIR/source/util-linux-2.29/configure \
+    $TOPDIR/source/util-linux-2.29.2/configure \
       --host=$CLFS_TARGET \
       --prefix=$SYSROOT/usr \
       --libdir=$SYSROOT/usr/lib64 \
