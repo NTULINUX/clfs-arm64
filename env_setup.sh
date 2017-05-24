@@ -40,13 +40,8 @@ download_source() {
     "https://ftp.gnu.org/gnu/coreutils/coreutils-8.27.tar.xz" \
     "http://www.linuxfromscratch.org/patches/downloads/coreutils/coreutils-8.27-i18n-1.patch" \
     "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.2.tar.xz" \
-    "http://zlib.net/zlib-1.2.8.tar.xz" \
-    "https://www.kernel.org/pub/linux/libs/security/linux-privs/libcap2/libcap-2.25.tar.xz" \
     "http://ftp.gnu.org/gnu/findutils/findutils-4.6.0.tar.gz" \
     "http://ftp.gnu.org/gnu/grep/grep-2.23.tar.xz" \
-    "ftp://ftp.kernel.org/pub/linux/utils/kbd/kbd-2.0.3.tar.xz" \
-    "https://github.com/libcheck/check/archive/0.10.0.tar.gz" \
-    "http://www.linux-pam.org/library/Linux-PAM-1.2.1.tar.gz" \
     "http://ftp.gnu.org/gnu/gzip/gzip-1.6.tar.xz" \
     "http://ftp.gnu.org/gnu/sed/sed-4.2.2.tar.bz2" \
     "http://ftp.gnu.org/gnu/gawk/gawk-4.1.3.tar.xz" \
@@ -138,25 +133,6 @@ clean_build_env() {
   unset LDFLAGS
   unset CFLAGS
   unset LIBS
-}
-
-build_ltp() {
-  if [ ! -d $TOPDIR/git/ltp ]; then
-    pushd $TOPDIR/git
-    git clone https://github.com/linux-test-project/ltp.git
-    popd
-  fi
-  if [ ! -e $TOPDIR/source/ltp ]; then
-    pushd $TOPDIR/source
-    ln -sf ../git/ltp
-    popd
-  fi
-  pushd $TOPDIR/source/ltp
-    make autotools
-    $TOPDIR/source/ltp/configure --host=$CLFS_TARGET --prefix=$SYSTEM/opt/ltp || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
 }
 
 build_strace() {
@@ -464,55 +440,6 @@ build_coreutils() {
   popd
 }
 
-build_zlib() {
-  if [ ! -d $TOPDIR/source/zlib-1.2.8 ]; then
-    tar -xf $TOPDIR/tarball/zlib-1.2.8.tar.xz -C $TOPDIR/source
-  fi
-
-  pushd $TOPDIR/source/zlib-1.2.8
-  $TOPDIR/source/zlib-1.2.8/configure \
-      --prefix=$SYSROOT/usr/ \
-      --libdir=$SYSROOT/usr/lib64 \
-    || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
-}
-
-build_libcap() {
-  if [ ! -d $TOPDIR/source/libcap-2.25 ]; then
-      tar -xf $TOPDIR/tarball/libcap-2.25.tar.xz -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/libcap-2.25
-    cp $TOPDIR/misc/libcap-Make.Rules Make.Rules
-    make
-    cp libcap/libcap.so*    $SYSROOT/usr/lib64/
-    cp libcap/include/sys/* $SYSROOT/usr/include/sys/
-  popd
-}
-
-# sudo apt-get install libtool-bin
-build_procps() {
-  if [ ! -d $TOPDIR/git/procps ]; then
-    pushd $TOPDIR/git
-    git clone https://gitlab.com/procps-ng/procps.git
-    popd
-  fi
-  if [ ! -e TOPDIR/source/procps ]; then
-    pushd $TOPDIR/source
-    ln -sf ../git/procps
-    popd
-  fi
-  pushd $TOPDIR/source/procps
-    sed -i '/^AC_FUNC_MALLOC$/d;/^AC_FUNC_REALLOC$/d' configure.ac
-    make clean
-    ./autogen.sh || return 1
-    LDFLAGS=-ltinfo ./configure --host=$CLFS_TARGET --prefix=$SYSROOT/usr --libdir=$SYSROOT/usr/lib64 || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-}
-
 build_find() {
   if [ ! -d $TOPDIR/source/findutils-4.6.0 ]; then
     tar -xzf $TOPDIR/tarball/findutils-4.6.0.tar.gz -C $TOPDIR/source
@@ -571,59 +498,6 @@ build_ncurses() {
 #    ln -sf libpanel.so.6.0 libpanel.so
 #    ln -sf libform.so.6 libform.so
     ln -sf libtinfo.so.6.0 libtinfo.so
-  popd
-}
-
-build_pam() {
-  if [ ! -d $TOPDIR/source/Linux-PAM-1.2.1 ]; then
-    tar -xzf $TOPDIR/tarball/Linux-PAM-1.2.1.tar.gz -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/Linux-PAM-1.2.1/
-    make clean
-    ./configure --host=$CLFS_TARGET \
-    --disable-nis \
-    --prefix=$SYSROOT/usr \
-    --libdir=$SYSROOT/usr/lib64 || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-    mkdir -p $SYSROOT/usr/include/security
-    cd $SYSROOT/usr/include/security
-    for i in $(ls ../{pam*,_pam*}); do ln -sf $i; done
-  popd
-}
-
-build_check() {
-  if [ ! -d $TOPDIR/source/check-0.10.0 ]; then
-    tar -xzf $TOPDIR/tarball/0.10.0.tar.gz -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/check-0.10.0
-    autoreconf --force --install
-    ./configure --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --libdir=$SYSROOT/usr/lib64 || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-}
-
-build_kbd() {
-  if [ ! -d $TOPDIR/source/kbd-2.0.3 ]; then
-    tar -xf $TOPDIR/tarball/kbd-2.0.3.tar.xz -C $TOPDIR/source
-    # fix cross-compiled setfont can't find font file issue
-    sed -i 's:DATADIR:"/lib/kbd":g' $TOPDIR/source/kbd-2.0.3/src/*.c
-  fi
-  mkdir -p $TOPDIR/build/kbd
-  pushd $TOPDIR/build/kbd
-    PKG_CONFIG_LIBDIR=$SYSROOT/usr/lib64/pkgconfig \
-    CPPFLAGS="-I$SYSROOT/usr/include" \
-    $TOPDIR/source/kbd-2.0.3/configure \
-    --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --datadir=$SYSROOT/lib/kbd \
-    || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-    mv -v $SYSROOT/usr/bin/{kbd_mode,loadkeys,openvt,setfont} $SYSROOT/bin
   popd
 }
 
@@ -694,28 +568,6 @@ build_awk() {
     make -j${JOBS} || return 1
     make install || return 1
   popd
-}
-
-build_bootscript() {
-  if [ ! -d $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710 ]; then
-    tar -xf $TOPDIR/tarball/bootscripts-cross-lfs-3.0-20140710.tar.xz -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710
-    DESTDIR=$SYSTEM make install-bootscripts
-    ## HACK! ##
-    sed -i '20i\ldconfig' $SYSTEM/etc/rc.d/init.d/rc
-    sed -i '$i\bash' $SYSTEM/etc/rc.d/init.d/rc
-  popd
-}
-
-do_strip () {
-  for i in $(find $SYSTEM/); do
-  echo $i
-    test -f $i && file $i | grep ELF &>/dev/null
-    if [ $? -eq 0 ]; then
-      ${CROSS_COMPILE}strip --strip-unneeded $i
-    fi
-  done
 }
 
 pack_ramdisk() {
