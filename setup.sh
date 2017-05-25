@@ -36,16 +36,18 @@ download_source || die "download_source"
 
 # Download qemu source code
 if [ ! -d $TOPDIR/git/qemu ]; then
-  cd $TOPDIR/git
+  pushd $TOPDIR/git
   git clone git://git.qemu-project.org/qemu.git || die "clone qemu"
-  cd -
+  cd $TOPDIR/git/qemu
+  git submodule update --init dtc
+  popd
 fi
 
 # Download linux kernel code
 if [ ! -d $TOPDIR/git/kernel ]; then
-  cd $TOPDIR/git
+  pushd $TOPDIR/git
   git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git kernel || die "clone kernel"
-  cd -
+  popd
 fi
 
 if [ $FORCE_UPDATE -eq 1 ]; then
