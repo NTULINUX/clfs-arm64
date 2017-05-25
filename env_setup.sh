@@ -37,8 +37,8 @@ download_source() {
     "https://github.com/bminor/binutils-gdb/archive/gdb-7.11-release.tar.gz" \
     "http://busybox.net/downloads/busybox-1.24.2.tar.bz2" \
     "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
-    "https://ftp.gnu.org/gnu/coreutils/coreutils-8.27.tar.xz" \
-    "http://www.linuxfromscratch.org/patches/downloads/coreutils/coreutils-8.27-i18n-1.patch" \
+    "http://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz" \
+    "http://patches.clfs.org/dev/coreutils-8.23-noman-1.patch" \
     "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.2.tar.xz" \
     "http://ftp.gnu.org/gnu/findutils/findutils-4.6.0.tar.gz" \
     "http://ftp.gnu.org/gnu/grep/grep-2.23.tar.xz" \
@@ -420,25 +420,23 @@ build_busybox() {
 }
 
 build_coreutils() {
-  if [ ! -d $TOPDIR/source/coreutils-8.27 ]; then
-    tar -xf $TOPDIR/tarball/coreutils-8.27.tar.xz -C $TOPDIR/source
-    pushd $TOPDIR/source/coreutils-8.27
-      patch -Np1 -i $TOPDIR/tarball/coreutils-8.27-i18n-1.patch
-      sed -i '/test.lock/s/^/#/' gnulib-tests/gnulib.mk
-      sed -i 's/\$(srcdir)\/man\/help2man/& --no-discard-stderr/' Makefile.in
+  if [ ! -d $TOPDIR/source/coreutils-8.23 ]; then
+    tar -xf $TOPDIR/tarball/coreutils-8.23.tar.xz -C $TOPDIR/source
+    pushd $TOPDIR/source/coreutils-8.23
+    patch -p1 < $TOPDIR/tarball/coreutils-8.23-noman-1.patch
     popd
   fi
 
   mkdir -p $TOPDIR/build/coreutils
   pushd $TOPDIR/build/coreutils
-    $TOPDIR/source/coreutils-8.27/configure \
-       --host=$CLFS_TARGET --prefix=$SYSROOT/usr \
-       --enable-no-install-program=kill,uptime || return 1
+    $TOPDIR/source/coreutils-8.23/configure \
+        --host=$CLFS_TARGET --prefix=$SYSROOT/usr || return 1
     make -j${JOBS} || return 1
     make install
     mv -v $SYSROOT/usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo,false,ln,ls,mkdir,mknod,mv,pwd,rm,rmdir,stty,sync,true,uname,chroot,head,sleep,nice,test,[} $SYSROOT/bin/
   popd
 }
+
 
 build_find() {
   if [ ! -d $TOPDIR/source/findutils-4.6.0 ]; then
