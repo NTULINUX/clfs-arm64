@@ -32,11 +32,12 @@ download_source() {
     "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz" \
     "https://ftp.gnu.org/gnu/automake/automake-1.15.tar.xz" \
     "ftp://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz" \
-    "http://ftp.gnu.org/gnu/bash/bash-4.4-rc1.tar.gz" \
+    "https://ftp.gnu.org/gnu/bash/bash-4.4.tar.gz" \
     "http://downloads.sourceforge.net/project/strace/strace/4.11/strace-4.11.tar.xz" \
     "https://github.com/bminor/binutils-gdb/archive/gdb-7.11-release.tar.gz" \
     "http://busybox.net/downloads/busybox-1.24.2.tar.bz2" \
     "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
+    "https://www.zlib.net/zlib-1.2.11.tar.gz" \
     "http://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz" \
     "http://patches.clfs.org/dev/coreutils-8.23-noman-1.patch" \
     "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.2.tar.xz" \
@@ -326,6 +327,8 @@ build_toolchain() {
 
 }
 
+# build failed:
+# ld: cannot find /lib64/libpthread.so.0
 build_gcc () {
   mkdir -p $TOPDIR/build/gcc
   pushd $TOPDIR/build/gcc
@@ -349,18 +352,19 @@ build_gcc () {
 }
 
 build_bash() {
-  if [ ! -d $TOPDIR/source/bash-4.4-rc1 ]; then
-    tar -xzf $TOPDIR/tarball/bash-4.4-rc1.tar.gz -C $TOPDIR/source
-    sed -i '/#define SYS_BASHRC/c\#define SYS_BASHRC "/etc/bash.bashrc"' $TOPDIR/source/bash-4.4-rc1/config-top.h
+  if [ ! -d $TOPDIR/source/bash-4.4 ]; then
+    tar -xzf $TOPDIR/tarball/bash-4.4.tar.gz -C $TOPDIR/source
+    sed -i '/#define SYS_BASHRC/c\#define SYS_BASHRC "/etc/bash.bashrc"' $TOPDIR/source/bash-4.4/config-top.h
   fi
 
   mkdir -p $TOPDIR/build/bash
   pushd $TOPDIR/build/bash
-    $TOPDIR/source/bash-4.4-rc1/configure --host=$CLFS_TARGET --prefix=$SYSROOT/usr || return 1
+    $TOPDIR/source/bash-4.4/configure \
+        --host=$CLFS_TARGET \
+	--prefix=$SYSTEM/usr || return 1
     make -j${JOBS} || return 1
     make install
-    mv -v $SYSROOT/usr/bin/bash $SYSROOT/bin/
-    cd $SYSROOT/bin && ln -sf bash sh
+    cd $SYSTEM/bin && ln -sf ../usr/bin/bash sh
   popd
 }
 
@@ -394,7 +398,7 @@ build_busybox() {
     else
       mkdir -p $SYSTEM/lib64 $SYSTEM/usr/lib64 $SYSTEM/lib
       cp -a $SYSROOT/lib64/* $SYSTEM/lib64
-      cp -a $SYSROOT/usr/lib64/*.so $SYSTEM/usr/lib64
+      cp -a $SYSROOT/usr/lib64/*.so* $SYSTEM/usr/lib64
       cp -a $SYSROOT/lib/* $SYSTEM/lib
       cp $TOPDIR/configs/busybox.config .config
     fi
@@ -430,10 +434,12 @@ build_coreutils() {
   mkdir -p $TOPDIR/build/coreutils
   pushd $TOPDIR/build/coreutils
     $TOPDIR/source/coreutils-8.23/configure \
-        --host=$CLFS_TARGET --prefix=$SYSROOT/usr || return 1
+        --host=$CLFS_TARGET \
+        --prefix=$SYSTEM/usr \
+        --bindir=$SYSTEM/bin \
+	 || return 1
     make -j${JOBS} || return 1
     make install
-    mv -v $SYSROOT/usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo,false,ln,ls,mkdir,mknod,mv,pwd,rm,rmdir,stty,sync,true,uname,chroot,head,sleep,nice,test,[} $SYSROOT/bin/
   popd
 }
 
@@ -499,6 +505,22 @@ build_ncurses() {
   popd
 }
 
+# for building gcc
+build_zlib() {
+  if [ ! -d $TOPDIR/source/zlib-1.2.11 ]; then
+    tar -xzf $TOPDIR/tarball/zlib-1.2.11.tar.gz -C $TOPDIR/source
+  fi
+
+  pushd $TOPDIR/source/zlib-1.2.11
+  $TOPDIR/source/zlib-1.2.11/configure \
+      --prefix=$SYSROOT/usr/ \
+      --libdir=$SYSROOT/usr/lib64 \
+    || return 1
+    make -j${JOBS} || return 1
+    make install
+  popd
+}
+
 build_util_linux() {
   if [ ! -d $TOPDIR/source/util-linux-2.29.2 ]; then
     tar -xf $TOPDIR/tarball/util-linux-2.29.2.tar.xz -C $TOPDIR/source/
@@ -508,9 +530,9 @@ build_util_linux() {
   pushd $TOPDIR/build/util-linux
     $TOPDIR/source/util-linux-2.29.2/configure \
       --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr \
-      --libdir=$SYSROOT/usr/lib64 \
-      --with-bashcompletiondir=$SYSROOT/usr/share/bash-completion/completions \
+      --prefix=$SYSTEM/usr \
+      --libdir=$SYSTEM/usr/lib64 \
+      --with-bashcompletiondir=$SYSTEM/usr/share/bash-completion/completions \
       --without-python \
       --disable-wall \
       --disable-eject \
@@ -566,6 +588,16 @@ build_awk() {
     make -j${JOBS} || return 1
     make install || return 1
   popd
+}
+
+do_strip () {
+  for i in $(find $SYSTEM/); do
+  echo $i
+    test -f $i && file $i | grep ELF &>/dev/null
+    if [ $? -eq 0 ]; then
+      ${CROSS_COMPILE}strip --strip-unneeded $i
+    fi
+  done
 }
 
 pack_ramdisk() {

@@ -76,18 +76,19 @@ if [ ! -f $SYSIMG ]; then
   mkdir -p $SYSTEM/{bin,sbin,etc,run,dev,tmp,sys,proc,mnt,var,home,root,lib,usr/lib}
   prepare_build_env
   test -f $SYSROOT/usr/lib64/libncursesw.so.6.0 || build_ncurses || die "build_ncurses"
+  test -f $SYSROOT/usr/lib64/libz.so || build_zlib || die "build_zlib"
   test -f $SYSTEM/bin/busybox || build_busybox || die "build_busybox"
-  test -f $SYSROOT/usr/bin/yes || build_coreutils || die "build_coreutils"
-  test -f $SYSROOT/usr/bin/bash ||  build_bash || die "build_bash"
-  test -f $SYSROOT/usr/sbin/agetty || build_util_linux || die "build_util_linux"
+  test -f $SYSTEM/usr/bin/yes || build_coreutils || die "build_coreutils"
+  test -f $SYSTEM/usr/bin/bash ||  build_bash || die "build_bash"
+  test -f $SYSTEM/usr/bin/dmesg || build_util_linux || die "build_util_linux"
   test -f $SYSTEM/usr/bin/strace ||  build_strace || die "build_strace"
   test -f $SYSTEM/bin/find || build_find || die "build_find"
   test -f $SYSTEM/bin/grep || build_grep || die "build_grep"
-#  test -f $SYSTEM/bin/sed || build_sed || die "build_sed"
-#  test -f $SYSTEM/bin/awk || build_awk || die "build_awk"
-#  test -f $SYSTEM/bin/gzip || build_gzip || die "build_gzip"
-#  test -f $SYSTEM/usr/bin/gcc || build_gcc || die "build_gcc"
+  test -f $SYSTEM/bin/sed || build_sed || die "build_sed"
+  test -f $SYSTEM/bin/awk || build_awk || die "build_awk"
+  test -f $SYSTEM/bin/gzip || build_gzip || die "build_gzip"
 #  test -f $SYSTEM/usr/bin/gdb ||  build_binutils_gdb || die "build_binutils_gdb"
+#  test -f $SYSTEM/usr/bin/gcc || build_gcc || die "build_gcc"
   do_strip
   clean_build_env
   new_disk $SYSIMG 512
