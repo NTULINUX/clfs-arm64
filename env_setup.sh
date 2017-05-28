@@ -109,6 +109,19 @@ run() {
     -nographic $*
 }
 
+run_net() {
+  sudo $TOPDIR/tools/bin/qemu-system-aarch64 \
+    -machine virt \
+    -cpu cortex-a53 \
+    -m 512M \
+    -kernel $TOPDIR/out/Image \
+    -smp 1 \
+    -drive "file=$SYSIMG,media=disk,format=raw" \
+    --append "rootfstype=ext4 rw root=/dev/vda earlycon" \
+    --netdev type=tap,id=net0 -device virtio-net-device,netdev=net0 \
+    -nographic $*
+}
+
 prepare_build_env() {
   export CC=${CROSS_COMPILE}gcc
   export LD=${CROSS_COMPILE}ld

@@ -1,0 +1,22 @@
+#!/bin/sh 
+# 
+# Script to bring down and delete bridge br0 when QEMU exits 
+# 
+# Bring down eth0 and br0 
+#
+ifdown enp3s0
+ifdown br0
+ifconfig br0 down 
+# 
+# Delete the bridge
+#
+brctl delbr br0 
+# 
+# bring up eth0 in "normal" mode 
+#
+ifconfig enp3s0 -promisc
+ifup enp3s0
+#
+# delete the tap device
+#
+openvpn --rmtun --dev $1

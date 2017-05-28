@@ -1,3 +1,4 @@
 
+= fix tty bugs, (set -o vi, k,j doesn't work well)
 - enable kdump, so can use crash to debug.
 
