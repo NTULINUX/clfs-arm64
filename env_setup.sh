@@ -409,10 +409,7 @@ build_busybox() {
     if [ "x$1" == "xstatic" ]; then
       sed "s/# CONFIG_STATIC is not set/CONFIG_STATIC=y/" $TOPDIR/configs/busybox.config > .config
     else
-      mkdir -p $SYSTEM/lib64 $SYSTEM/usr/lib64 $SYSTEM/lib
-      cp -a $SYSROOT/lib64/* $SYSTEM/lib64
-      cp -a $SYSROOT/usr/lib64/*.so* $SYSTEM/usr/lib64
-      cp -a $SYSROOT/lib/* $SYSTEM/lib
+      cp -a $SYSROOT/* $SYSTEM/
       cp $TOPDIR/configs/busybox.config .config
     fi
     make || return 1
@@ -448,8 +445,8 @@ build_coreutils() {
   pushd $TOPDIR/build/coreutils
     $TOPDIR/source/coreutils-8.23/configure \
         --host=$CLFS_TARGET \
-        --prefix=$SYSTEM/usr \
-        --bindir=$SYSTEM/bin \
+        --prefix=$SYSROOT/usr \
+        --bindir=$SYSROOT/bin \
 	 || return 1
     make -j${JOBS} || return 1
     make install
@@ -543,15 +540,15 @@ build_util_linux() {
   pushd $TOPDIR/build/util-linux
     $TOPDIR/source/util-linux-2.29.2/configure \
       --host=$CLFS_TARGET \
-      --prefix=$SYSTEM/usr \
-      --libdir=$SYSTEM/usr/lib64 \
+      --prefix=$SYSROOT/usr \
+      --libdir=$SYSROOT/usr/lib64 \
       --with-bashcompletiondir=$SYSTEM/usr/share/bash-completion/completions \
       --without-python \
       --disable-wall \
       --disable-eject \
       || return 1
     make -j${JOBS} || return 1
-    make install
+    make install || return 1
   popd
 }
 

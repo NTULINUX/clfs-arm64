@@ -1,4 +1,5 @@
 
-= fix tty bugs, (set -o vi, k,j doesn't work well)
+- fix tty bugs, (set -o vi, k,j doesn't work well)
+- add sshd
 - enable kdump, so can use crash to debug.
 
