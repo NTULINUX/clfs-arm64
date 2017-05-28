@@ -374,10 +374,12 @@ build_bash() {
   pushd $TOPDIR/build/bash
     $TOPDIR/source/bash-4.4/configure \
         --host=$CLFS_TARGET \
-	--prefix=$SYSTEM/usr || return 1
+	--prefix=$SYSTEM/usr \
+        --bindir=$SYSROOT/bin \
+	|| return 1
     make -j${JOBS} || return 1
     make install
-    cd $SYSTEM/bin && ln -sf ../usr/bin/bash sh
+    cd $SYSROOT/bin && ln -sf bash sh
   popd
 }
 

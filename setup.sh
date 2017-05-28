@@ -77,8 +77,8 @@ if [ ! -f $SYSIMG ]; then
   prepare_build_env
   test -f $SYSROOT/usr/lib64/libncursesw.so.6.0 || build_ncurses || die "build_ncurses"
   test -f $SYSROOT/usr/lib64/libz.so || build_zlib || die "build_zlib"
-  test -f $SYSTEM/usr/bin/yes || build_coreutils || die "build_coreutils"
-  test -f $SYSTEM/usr/bin/bash ||  build_bash || die "build_bash"
+  test -f $SYSTEM/bin/yes || build_coreutils || die "build_coreutils"
+  test -f $SYSTEM/bin/bash ||  build_bash || die "build_bash"
   test -f $SYSTEM/usr/bin/dmesg || build_util_linux || die "build_util_linux"
   test -f $SYSTEM/usr/bin/strace ||  build_strace || die "build_strace"
   test -f $SYSTEM/bin/find || build_find || die "build_find"
