@@ -77,6 +77,9 @@ if [ ! -f $SYSIMG ]; then
   prepare_build_env
   test -f $SYSROOT/usr/lib64/libncursesw.so.6.0 || build_ncurses || die "build_ncurses"
   test -f $SYSROOT/usr/lib64/libz.so || build_zlib || die "build_zlib"
+  test -f $SYSROOT/sbin/init || build_sysvinit || die "build_sysvinit"
+  test -f $SYSROOT/usr/bin/login || build_shadow || die "build_shadow"
+  test -f $SYSROOT/sbin/udevd || build_eudev || die "build_eudev"
   test -f $SYSTEM/bin/yes || build_coreutils || die "build_coreutils"
   test -f $SYSTEM/bin/bash ||  build_bash || die "build_bash"
   test -f $SYSTEM/usr/bin/dmesg || build_util_linux || die "build_util_linux"
@@ -88,7 +91,7 @@ if [ ! -f $SYSIMG ]; then
   test -f $SYSTEM/bin/gzip || build_gzip || die "build_gzip"
 #  test -f $SYSTEM/usr/bin/gdb ||  build_binutils_gdb || die "build_binutils_gdb"
 #  test -f $SYSTEM/usr/bin/gcc || build_gcc || die "build_gcc"
-  test -f $SYSTEM/bin/busybox || build_busybox || die "build_busybox"
+#  test -f $SYSTEM/bin/busybox || build_busybox || die "build_busybox"
   do_strip
   clean_build_env
   new_disk $SYSIMG 512

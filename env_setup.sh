@@ -46,6 +46,9 @@ download_source() {
     "http://ftp.gnu.org/gnu/gzip/gzip-1.6.tar.xz" \
     "http://ftp.gnu.org/gnu/sed/sed-4.2.2.tar.bz2" \
     "http://ftp.gnu.org/gnu/gawk/gawk-4.1.3.tar.xz" \
+    "https://github.com/shadow-maint/shadow/releases/download/4.5/shadow-4.5.tar.xz" \
+    "http://download.savannah.gnu.org/releases/sysvinit/sysvinit-2.88dsf.tar.bz2" \
+    "http://dev.gentoo.org/~blueness/eudev/eudev-1.7.tar.gz" \
   )
   mkdir -p $TOPDIR/tarball
   pushd $TOPDIR/tarball
@@ -599,6 +602,61 @@ build_awk() {
     || return 1
     make -j${JOBS} || return 1
     make install || return 1
+  popd
+}
+
+# sudo apt-get install autoconf2.13
+# sudo apt-get install autopoint
+build_shadow() {
+  if [ ! -d $TOPDIR/source/shadow-4.5 ]; then
+    tar -xf $TOPDIR/tarball/shadow-4.5.tar.xz -C $TOPDIR/source
+    cp $TOPDIR/misc/shadow-src_usermod.c $TOPDIR/source/shadow-4.5/src/usermod.c
+  fi
+
+  pushd $TOPDIR/source/shadow-4.5
+    autoreconf -v -f --install
+    echo 'shadow_cv_passwd_dir=${SYSROOT}/bin' > config.cache
+    ./configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSROOT/usr \
+    --sysconfdir=$SYSROOT/etc \
+    --enable-maintainer-mode \
+    --disable-nls \
+    --enable-subordinate-ids=no \
+    --cache-file=config.cache || return 1
+    make || return 1
+    make install || return 1
+  popd
+}
+
+build_eudev() {
+  if [ ! -d $TOPDIR/source/eudev-1.7 ]; then
+    tar -xzf $TOPDIR/tarball/eudev-1.7.tar.gz -C $TOPDIR/source
+    sed -i '1i\#include <stdint.h>' $TOPDIR/source/eudev-1.7/src/mtd_probe/mtd_probe.h
+  fi
+  mkdir -p $TOPDIR/build/eudev
+  pushd $TOPDIR/build/eudev
+    $TOPDIR/source/eudev-1.7/configure --host=$CLFS_TARGET \
+    --prefix=$SYSROOT \
+    --disable-introspection \
+    --disable-gtk-doc-html \
+    --disable-gudev \
+    --disable-keymap || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    cd $SYSROOT/sbin && ln -sf ../bin/udevadm
+  popd
+}
+
+build_sysvinit() {
+  if [ ! -d $TOPDIR/source/sysvinit-2.88dsf ]; then
+    tar -xjf $TOPDIR/tarball/sysvinit-2.88dsf.tar.bz2 -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/sysvinit-2.88dsf
+    make CC=${CROSS_COMPILE}gcc LDFLAGS=-lcrypt -j${JOBS} || return 1
+    cp -v src/{init,halt,shutdown,runlevel,killall5,fstab-decode,sulogin,bootlogd} $SYSROOT/sbin/
+    cp -v src/mountpoint $SYSROOT/bin/
+    cp -v src/{last,mesg,utmpdump,wall} $SYSROOT/usr/bin/
   popd
 }
 
