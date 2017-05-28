@@ -39,7 +39,7 @@ download_source() {
     "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
     "https://www.zlib.net/zlib-1.2.11.tar.gz" \
     "http://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz" \
-    "http://patches.clfs.org/dev/coreutils-8.23-noman-1.patch" \
+    "http://ftp.bjtu.edu.cn/clfs/clfs-packages/svn/coreutils-8.23-noman-1.patch" \
     "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.2.tar.xz" \
     "http://ftp.gnu.org/gnu/findutils/findutils-4.6.0.tar.gz" \
     "http://ftp.gnu.org/gnu/grep/grep-2.23.tar.xz" \
