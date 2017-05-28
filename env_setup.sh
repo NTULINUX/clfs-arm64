@@ -416,7 +416,7 @@ build_busybox() {
       cp $TOPDIR/configs/busybox.config .config
     fi
     make || return 1
-    make install || return 1
+    cp busybox $SYSTEM/bin/
     cd $SYSTEM
     rm -f linuxrc
     ln -sf bin/busybox init
