@@ -1,0 +1,9 @@
+# Begin /etc/fstab
+
+# file system  mount-point  type   options          dump  fsck
+#                                                         order
+
+devpts         /dev/pts     devpts gid=5,mode=620   0     0
+shm            /dev/shm     tmpfs  defaults         0     0
+
+# End /etc/fstab
