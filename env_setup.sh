@@ -686,7 +686,7 @@ build_bootscript() {
     ## HACK! ##
     sed -i '20i\ldconfig' $SYSROOT/etc/rc.d/init.d/rc
     sed -i '$i\bash' $SYSROOT/etc/rc.d/init.d/rc
-    cp -v $TOPDIR/configs/{inittab,group,fstab} $SYSROOT/etc/
+    cp -v $TOPDIR/configs/{inittab,group,fstab,ld.so.conf} $SYSROOT/etc/
   popd
 }
 
