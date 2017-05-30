@@ -85,7 +85,7 @@ if [ ! -f $SYSIMG ]; then
   test -f $SYSROOT/sbin/udevd || build_eudev || die "build_eudev"
   test -f $SYSROOT/bin/yes || build_coreutils || die "build_coreutils"
   test -f $SYSROOT/bin/bash ||  build_bash || die "build_bash"
-  test -f $SYSROOT/usr/bin/dmesg || build_util_linux || die "build_util_linux"
+  test -f $SYSROOT/bin/dmesg || build_util_linux || die "build_util_linux"
   test -f $SYSROOT/usr/bin/strace ||  build_strace || die "build_strace"
   test -f $SYSROOT/bin/find || build_find || die "build_find"
   test -f $SYSROOT/bin/grep || build_grep || die "build_grep"

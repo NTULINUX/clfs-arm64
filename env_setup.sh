@@ -472,7 +472,7 @@ build_ncurses() {
     AWK=gawk $TOPDIR/source/ncurses-6.0/configure \
       --build=$CLFS_HOST \
       --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr  \
+      --prefix=$SYSROOT/usr \
       --libdir=$SYSROOT/usr/lib64 \
       --with-termlib=tinfo \
       --without-ada \
@@ -536,9 +536,10 @@ build_util_linux() {
   pushd $TOPDIR/build/util-linux
     $TOPDIR/source/util-linux-2.29.2/configure \
       --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr \
-      --libdir=$SYSROOT/usr/lib64 \
-      --with-bashcompletiondir=$SYSTEM/usr/share/bash-completion/completions \
+      --prefix=$SYSROOT/ \
+      --includedir=$SYSROOT/usr/include/ \
+      --datarootdir=$SYSROOT/usr/share \
+      --with-bashcompletiondir=$SYSROOT/usr/share/bash-completion/completions \
       --without-python \
       --disable-wall \
       --disable-eject \
@@ -629,16 +630,15 @@ build_eudev() {
   mkdir -p $TOPDIR/build/eudev
   pushd $TOPDIR/build/eudev
     $TOPDIR/source/eudev-1.7/configure --host=$CLFS_TARGET \
-	--prefix=$SYSROOT/usr \
-        --bindir=$SYSROOT/bin \
-        --sbindir=$SYSROOT/sbin/ \
+	--prefix=$SYSROOT/ \
+        --includedir=$SYSROOT/usr/include/ \
+        --datarootdir=$SYSROOT/usr/share \
         --disable-introspection \
         --disable-gtk-doc-html \
         --disable-gudev \
         --disable-keymap || return 1
     make -j${JOBS} || return 1
     make install || return 1
-    cd $SYSROOT/sbin && ln -sf ../bin/udevadm
   popd
 }
 
