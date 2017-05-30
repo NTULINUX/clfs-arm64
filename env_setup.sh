@@ -29,12 +29,9 @@ download_source() {
     "http://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz" \
     "https://ftp.gnu.org/gnu/libc/glibc-2.25.tar.bz2" \
     "https://ftp.gnu.org/gnu/gperf/gperf-3.1.tar.gz" \
-    "https://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.xz" \
-    "https://ftp.gnu.org/gnu/automake/automake-1.15.tar.xz" \
-    "ftp://ftp.gnu.org/gnu/libtool/libtool-2.4.6.tar.xz" \
     "https://ftp.gnu.org/gnu/bash/bash-4.4.tar.gz" \
     "http://downloads.sourceforge.net/project/strace/strace/4.11/strace-4.11.tar.xz" \
-    "https://github.com/bminor/binutils-gdb/archive/gdb-7.11-release.tar.gz" \
+    "https://github.com/bminor/binutils-gdb/archive/gdb-7.12.1-release.tar.gz" \
     "http://busybox.net/downloads/busybox-1.24.2.tar.bz2" \
     "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
     "https://www.zlib.net/zlib-1.2.11.tar.gz" \
@@ -46,8 +43,10 @@ download_source() {
     "http://ftp.gnu.org/gnu/gzip/gzip-1.6.tar.xz" \
     "http://ftp.gnu.org/gnu/sed/sed-4.2.2.tar.bz2" \
     "http://ftp.gnu.org/gnu/gawk/gawk-4.1.3.tar.xz" \
+    "http://www.linux-pam.org/library/Linux-PAM-1.3.0.tar.gz" \
     "https://github.com/shadow-maint/shadow/releases/download/4.5/shadow-4.5.tar.xz" \
     "http://download.savannah.gnu.org/releases/sysvinit/sysvinit-2.88dsf.tar.bz2" \
+    "http://clfs.org/files/packages/3.0.0/SYSVINIT/bootscripts-cross-lfs-3.0-20140710.tar.xz" \
     "http://dev.gentoo.org/~blueness/eudev/eudev-1.7.tar.gz" \
   )
   mkdir -p $TOPDIR/tarball
@@ -91,6 +90,10 @@ build_qemu() {
     make -j${JOBS} || return 1
     make install
   popd
+}
+
+do_install() {
+  cp -a $SYSROOT/* $SYSTEM/
 }
 
 do_update() {
@@ -159,7 +162,10 @@ build_strace() {
 
   mkdir -p $TOPDIR/build/strace
   pushd $TOPDIR/build/strace
-    $TOPDIR/source/strace-4.11/configure --host=$CLFS_TARGET --prefix=$SYSTEM/usr || return 1
+    $TOPDIR/source/strace-4.11/configure \
+      --host=$CLFS_TARGET \
+      --prefix=$SYSROOT/usr \
+      || return 1
     make -j${JOBS} || return 1
     make install
   popd
@@ -175,8 +181,8 @@ build_toolchain() {
 
     ## binutils
   if [ ! -d $TOPDIR/source/binutils-gdb ]; then
-    tar -xzf $TOPDIR/tarball/gdb-7.11-release.tar.gz -C $TOPDIR/source/
-    mv $TOPDIR/source/binutils-gdb-gdb-7.11-release $TOPDIR/source/binutils-gdb
+    tar -xzf $TOPDIR/tarball/gdb-7.12.1-release.tar.gz -C $TOPDIR/source/
+    mv $TOPDIR/source/gdb-7.12.1-release $TOPDIR/source/binutils-gdb
   fi
   mkdir -p $TOPDIR/build/binutils
   pushd $TOPDIR/build/binutils
@@ -304,43 +310,6 @@ build_toolchain() {
     make install || return 1
   popd
 
-  if [ ! -d $TOPDIR/source/autoconf-2.69 ]; then
-    tar -xf $TOPDIR/tarball/autoconf-2.69.tar.xz -C $TOPDIR/source
-    tar -xf $TOPDIR/tarball/automake-1.15.tar.xz -C $TOPDIR/source
-    tar -xf $TOPDIR/tarball/libtool-2.4.6.tar.xz -C $TOPDIR/source
-  fi
-
-  mkdir -p $TOPDIR/build/autoconf
-  pushd $TOPDIR/build/autoconf
-    $TOPDIR/source/autoconf-2.69/configure \
-      --prefix=$TOOLDIR \
-      --host=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-  mkdir -p $TOPDIR/build/automake
-  pushd $TOPDIR/build/automake
-    $TOPDIR/source/automake-1.15/configure \
-      --prefix=$TOOLDIR \
-      --host=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-  mkdir -p $TOPDIR/build/libtool
-  pushd $TOPDIR/build/libtool
-    $TOPDIR/source/libtool-2.4.6/configure \
-      --prefix=$TOOLDIR \
-      --host=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-
 }
 
 # build failed:
@@ -377,7 +346,7 @@ build_bash() {
   pushd $TOPDIR/build/bash
     $TOPDIR/source/bash-4.4/configure \
         --host=$CLFS_TARGET \
-	--prefix=$SYSTEM/usr \
+	--prefix=$SYSROOT/usr \
         --bindir=$SYSROOT/bin \
 	|| return 1
     make -j${JOBS} || return 1
@@ -390,8 +359,8 @@ build_bash() {
 # sudo apt-get install texinfo bison flex
 build_binutils_gdb() {
   if [ ! -d $TOPDIR/source/binutils-gdb ]; then
-    tar -xzf $TOPDIR/tarball/gdb-7.11-release.tar.gz -C $TOPDIR/source
-    mv $TOPDIR/source/binutils-gdb-gdb-7.11-release $TOPDIR/source/binutils-gdb
+    tar -xzf $TOPDIR/tarball/gdb-7.12.1-release.tar.gz -C $TOPDIR/source
+    mv $TOPDIR/source/gdb-7.12.1-release $TOPDIR/source/binutils-gdb
   fi
 
   mkdir -p $TOPDIR/build/binutils-gdb
@@ -414,7 +383,6 @@ build_busybox() {
     if [ "x$1" == "xstatic" ]; then
       sed "s/# CONFIG_STATIC is not set/CONFIG_STATIC=y/" $TOPDIR/configs/busybox.config > .config
     else
-      cp -a $SYSROOT/* $SYSTEM/
       cp $TOPDIR/configs/busybox.config .config
     fi
     make || return 1
@@ -467,9 +435,11 @@ build_find() {
   pushd $TOPDIR/build/find
     echo "gl_cv_func_wcwidth_works=yes" > config.cache
     echo "ac_cv_func_fnmatch_gnu=yes" >> config.cache
-    $TOPDIR/source/findutils-4.6.0/configure --host=$CLFS_TARGET \
-    --prefix=$SYSTEM \
-    --cache-file=config.cache || return 1
+    $TOPDIR/source/findutils-4.6.0/configure \
+      --host=$CLFS_TARGET \
+      --prefix=$SYSROOT/usr/ \
+      --bindir=$SYSROOT/bin \
+      --cache-file=config.cache || return 1
     make -j${JOBS} || return 1
     make install || return 1
   popd
@@ -481,9 +451,11 @@ build_grep() {
   fi
   mkdir -p $TOPDIR/build/grep
   pushd $TOPDIR/build/grep
-    $TOPDIR/source/grep-2.23/configure --host=$CLFS_TARGET \
-    --prefix=$SYSTEM \
-    || return 1
+    $TOPDIR/source/grep-2.23/configure \
+      --host=$CLFS_TARGET \
+      --prefix=$SYSROOT/usr \
+      --bindir=$SYSROOT/bin \
+      || return 1
     make -j${JOBS} || return 1
     make install || return 1
   popd
@@ -536,6 +508,24 @@ build_zlib() {
   popd
 }
 
+build_pam() {
+  if [ ! -d $TOPDIR/source/Linux-PAM-1.3.0 ]; then
+    tar -xzf $TOPDIR/tarball/Linux-PAM-1.3.0.tar.gz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/Linux-PAM-1.3.0/
+    ./configure --host=$CLFS_TARGET \
+    --with-sysroot=$SYSROOT \
+    --prefix=$SYSROOT/usr \
+    --disable-nis \
+    --libdir=$SYSROOT/usr/lib64 || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+    mkdir -p $SYSROOT/usr/include/security
+    cd $SYSROOT/usr/include/security
+    for i in $(ls ../{pam*,_pam*}); do ln -sf $i; done
+  popd
+}
+
 build_util_linux() {
   if [ ! -d $TOPDIR/source/util-linux-2.29.2 ]; then
     tar -xf $TOPDIR/tarball/util-linux-2.29.2.tar.xz -C $TOPDIR/source/
@@ -565,8 +555,8 @@ build_gzip() {
   pushd $TOPDIR/build/gzip
     $TOPDIR/source/gzip-1.6/configure \
     --host=$CLFS_TARGET \
-    --prefix=$SYSTEM/usr \
-    --bindir=$SYSTEM/bin \
+    --prefix=$SYSROOT/usr \
+    --bindir=$SYSROOT/bin \
     || return 1
     make -j${JOBS} || return 1
     make install || return 1
@@ -581,8 +571,8 @@ build_sed() {
   pushd $TOPDIR/build/sed
     $TOPDIR/source/sed-4.2.2/configure \
     --host=$CLFS_TARGET \
-    --prefix=$SYSTEM/usr \
-    --bindir=$SYSTEM/bin \
+    --prefix=$SYSROOT/usr \
+    --bindir=$SYSROOT/bin \
     || return 1
     make -j${JOBS} || return 1
     make install || return 1
@@ -597,8 +587,8 @@ build_awk() {
   pushd $TOPDIR/build/awk
     $TOPDIR/source/gawk-4.1.3/configure \
     --host=$CLFS_TARGET \
-    --prefix=$SYSTEM/usr \
-    --bindir=$SYSTEM/bin \
+    --prefix=$SYSROOT/usr \
+    --bindir=$SYSROOT/bin \
     || return 1
     make -j${JOBS} || return 1
     make install || return 1
@@ -610,7 +600,6 @@ build_awk() {
 build_shadow() {
   if [ ! -d $TOPDIR/source/shadow-4.5 ]; then
     tar -xf $TOPDIR/tarball/shadow-4.5.tar.xz -C $TOPDIR/source
-    cp $TOPDIR/misc/shadow-src_usermod.c $TOPDIR/source/shadow-4.5/src/usermod.c
   fi
 
   pushd $TOPDIR/source/shadow-4.5
@@ -619,13 +608,15 @@ build_shadow() {
     ./configure \
     --host=$CLFS_TARGET \
     --prefix=$SYSROOT/usr \
+    --bindir=$SYSROOT/usr/bin/ \
+    --sbindir=$SYSROOT/usr/bin/ \
     --sysconfdir=$SYSROOT/etc \
     --enable-maintainer-mode \
     --disable-nls \
     --enable-subordinate-ids=no \
     --cache-file=config.cache || return 1
     make || return 1
-    make install || return 1
+    make install
   popd
 }
 
@@ -637,11 +628,13 @@ build_eudev() {
   mkdir -p $TOPDIR/build/eudev
   pushd $TOPDIR/build/eudev
     $TOPDIR/source/eudev-1.7/configure --host=$CLFS_TARGET \
-    --prefix=$SYSROOT \
-    --disable-introspection \
-    --disable-gtk-doc-html \
-    --disable-gudev \
-    --disable-keymap || return 1
+	--prefix=$SYSROOT/usr \
+        --bindir=$SYSROOT/bin \
+        --sbindir=$SYSROOT/sbin/ \
+        --disable-introspection \
+        --disable-gtk-doc-html \
+        --disable-gudev \
+        --disable-keymap || return 1
     make -j${JOBS} || return 1
     make install || return 1
     cd $SYSROOT/sbin && ln -sf ../bin/udevadm
@@ -657,6 +650,19 @@ build_sysvinit() {
     cp -v src/{init,halt,shutdown,runlevel,killall5,fstab-decode,sulogin,bootlogd} $SYSROOT/sbin/
     cp -v src/mountpoint $SYSROOT/bin/
     cp -v src/{last,mesg,utmpdump,wall} $SYSROOT/usr/bin/
+  popd
+}
+
+build_bootscript() {
+  if [ ! -d $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710 ]; then
+    tar -xf $TOPDIR/tarball/bootscripts-cross-lfs-3.0-20140710.tar.xz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710
+    DESTDIR=$SYSROOT make install-bootscripts
+    ## HACK! ##
+    sed -i '20i\ldconfig' $SYSROOT/etc/rc.d/init.d/rc
+    sed -i '$i\bash' $SYSROOT/etc/rc.d/init.d/rc
+    cp -v $TOPDIR/configs/{inittab,group,fstab} $SYSROOT/etc/
   popd
 }
 

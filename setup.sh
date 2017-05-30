@@ -77,24 +77,27 @@ if [ ! -f $SYSIMG ]; then
   prepare_build_env
   test -f $SYSROOT/usr/lib64/libncursesw.so.6.0 || build_ncurses || die "build_ncurses"
   test -f $SYSROOT/usr/lib64/libz.so || build_zlib || die "build_zlib"
+  test -f $SYSROOT/usr/lib64/libpam.so || build_pam || die "build_pam"
   test -f $SYSROOT/sbin/init || build_sysvinit || die "build_sysvinit"
-  test -f $SYSROOT/usr/bin/login || build_shadow || die "build_shadow"
+  test -f $SYSROOT/etc/rc.d/init.d/rc || build_bootscript || die "build_bootscript"
+  test -f $SYSROOT/usr/sbin/login || build_shadow || die "build_shadow"
   test -f $SYSROOT/sbin/udevd || build_eudev || die "build_eudev"
-  test -f $SYSTEM/bin/yes || build_coreutils || die "build_coreutils"
-  test -f $SYSTEM/bin/bash ||  build_bash || die "build_bash"
-  test -f $SYSTEM/usr/bin/dmesg || build_util_linux || die "build_util_linux"
-  test -f $SYSTEM/usr/bin/strace ||  build_strace || die "build_strace"
-  test -f $SYSTEM/bin/find || build_find || die "build_find"
-  test -f $SYSTEM/bin/grep || build_grep || die "build_grep"
-  test -f $SYSTEM/bin/sed || build_sed || die "build_sed"
-  test -f $SYSTEM/bin/awk || build_awk || die "build_awk"
-  test -f $SYSTEM/bin/gzip || build_gzip || die "build_gzip"
+  test -f $SYSROOT/bin/yes || build_coreutils || die "build_coreutils"
+  test -f $SYSROOT/bin/bash ||  build_bash || die "build_bash"
+  test -f $SYSROOT/usr/bin/dmesg || build_util_linux || die "build_util_linux"
+  test -f $SYSROOT/usr/bin/strace ||  build_strace || die "build_strace"
+  test -f $SYSROOT/bin/find || build_find || die "build_find"
+  test -f $SYSROOT/bin/grep || build_grep || die "build_grep"
+  test -f $SYSROOT/bin/sed || build_sed || die "build_sed"
+  test -f $SYSROOT/bin/awk || build_awk || die "build_awk"
+  test -f $SYSROOT/bin/gzip || build_gzip || die "build_gzip"
 #  test -f $SYSTEM/usr/bin/gdb ||  build_binutils_gdb || die "build_binutils_gdb"
-#  test -f $SYSTEM/usr/bin/gcc || build_gcc || die "build_gcc"
+  test -f $SYSTEM/usr/bin/gcc || build_gcc || die "build_gcc"
 #  test -f $SYSTEM/bin/busybox || build_busybox || die "build_busybox"
+  do_install
   do_strip
   clean_build_env
-  new_disk $SYSIMG 512
+  new_disk $SYSIMG 1024
 fi
 
 # force build
