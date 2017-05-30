@@ -183,7 +183,7 @@ build_toolchain() {
     ## binutils
   if [ ! -d $TOPDIR/source/binutils-gdb ]; then
     tar -xzf $TOPDIR/tarball/gdb-7.12.1-release.tar.gz -C $TOPDIR/source/
-    mv $TOPDIR/source/gdb-7.12.1-release $TOPDIR/source/binutils-gdb
+    mv $TOPDIR/source/binutils-gdb-gdb-7.12.1-release $TOPDIR/source/binutils-gdb
   fi
   mkdir -p $TOPDIR/build/binutils
   pushd $TOPDIR/build/binutils
@@ -361,7 +361,7 @@ build_bash() {
 build_binutils_gdb() {
   if [ ! -d $TOPDIR/source/binutils-gdb ]; then
     tar -xzf $TOPDIR/tarball/gdb-7.12.1-release.tar.gz -C $TOPDIR/source
-    mv $TOPDIR/source/gdb-7.12.1-release $TOPDIR/source/binutils-gdb
+    mv $TOPDIR/source/binutils-gdb-gdb-7.12.1-release $TOPDIR/source/binutils-gdb
   fi
 
   mkdir -p $TOPDIR/build/binutils-gdb
@@ -633,6 +633,8 @@ build_eudev() {
 	--prefix=$SYSROOT/ \
         --includedir=$SYSROOT/usr/include/ \
         --datarootdir=$SYSROOT/usr/share \
+	--bindir=$SYSROOT/sbin/ \
+	--sbindir=$SYSROOT/sbin/ \
         --disable-introspection \
         --disable-gtk-doc-html \
         --disable-gudev \
