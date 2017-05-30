@@ -48,6 +48,7 @@ download_source() {
     "http://download.savannah.gnu.org/releases/sysvinit/sysvinit-2.88dsf.tar.bz2" \
     "http://clfs.org/files/packages/3.0.0/SYSVINIT/bootscripts-cross-lfs-3.0-20140710.tar.xz" \
     "http://dev.gentoo.org/~blueness/eudev/eudev-1.7.tar.gz" \
+    "http://kbd-project.org/download/kbd-2.0.4.tar.xz" \
   )
   mkdir -p $TOPDIR/tarball
   pushd $TOPDIR/tarball
@@ -650,6 +651,27 @@ build_sysvinit() {
     cp -v src/{init,halt,shutdown,runlevel,killall5,fstab-decode,sulogin,bootlogd} $SYSROOT/sbin/
     cp -v src/mountpoint $SYSROOT/bin/
     cp -v src/{last,mesg,utmpdump,wall} $SYSROOT/usr/bin/
+  popd
+}
+
+build_kbd() {
+  if [ ! -d $TOPDIR/source/kbd-2.0.4 ]; then
+    tar -xf $TOPDIR/tarball/kbd-2.0.4.tar.xz -C $TOPDIR/source
+    # fix cross-compiled setfont can't find font file issue
+    sed -i 's:DATADIR:"/lib/kbd":g' $TOPDIR/source/kbd-2.0.4/src/*.c
+  fi
+  mkdir -p $TOPDIR/build/kbd
+  pushd $TOPDIR/build/kbd
+    PKG_CONFIG_LIBDIR=$SYSROOT/usr/lib64/pkgconfig \
+    CPPFLAGS="-I$SYSROOT/usr/include" \
+    $TOPDIR/source/kbd-2.0.4/configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSROOT/usr \
+    --bindir=$SYSROOT/bin \
+    --datadir=$SYSROOT/lib/kbd \
+    || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
   popd
 }
 

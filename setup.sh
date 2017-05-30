@@ -79,6 +79,7 @@ if [ ! -f $SYSIMG ]; then
   test -f $SYSROOT/usr/lib64/libz.so || build_zlib || die "build_zlib"
   test -f $SYSROOT/usr/lib64/libpam.so || build_pam || die "build_pam"
   test -f $SYSROOT/sbin/init || build_sysvinit || die "build_sysvinit"
+  test -f $SYSROOT/bin/loadkeys || build_kbd || die "build_kbd"
   test -f $SYSROOT/etc/rc.d/init.d/rc || build_bootscript || die "build_bootscript"
   test -f $SYSROOT/usr/sbin/login || build_shadow || die "build_shadow"
   test -f $SYSROOT/sbin/udevd || build_eudev || die "build_eudev"
