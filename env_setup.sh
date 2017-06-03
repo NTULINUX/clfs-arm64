@@ -49,6 +49,7 @@ download_source() {
     "http://clfs.org/files/packages/3.0.0/SYSVINIT/bootscripts-cross-lfs-3.0-20140710.tar.xz" \
     "http://dev.gentoo.org/~blueness/eudev/eudev-1.7.tar.gz" \
     "http://kbd-project.org/download/kbd-2.0.4.tar.xz" \
+    "https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-3.3.12.tar.xz" \
   )
   mkdir -p $TOPDIR/tarball
   pushd $TOPDIR/tarball
@@ -619,6 +620,22 @@ build_shadow() {
     --cache-file=config.cache || return 1
     make || return 1
     make install
+  popd
+}
+
+build_procps() {
+  if [ ! -d $TOPDIR/source/procps-ng-3.3.12 ]; then
+    tar -xf $TOPDIR/tarball/procps-ng-3.3.12.tar.xz -C $TOPDIR/source
+  fi
+  pushd $TOPDIR/source/procps-ng-3.3.12
+    sed -i '/^AC_FUNC_MALLOC$/d;/^AC_FUNC_REALLOC$/d' configure.ac
+    $TOPDIR/source/procps-ng-3.3.12/configure \
+    --host=$CLFS_TARGET \
+    --prefix=$SYSROOT/usr \
+    --libdir=$SYSROOT/usr/lib64 \
+    || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
   popd
 }
 
