@@ -93,6 +93,8 @@ if [ ! -f $SYSIMG ]; then
   test -f $SYSROOT/bin/sed || build_sed || die "build_sed"
   test -f $SYSROOT/bin/awk || build_awk || die "build_awk"
   test -f $SYSROOT/bin/gzip || build_gzip || die "build_gzip"
+  test -f $SYSROOT/usr/bin/openssl || build_openssl || die "build_openssl"
+  test -f $SYSROOT/usr/bin/ssh || build_openssh || die "build_openssh"
 #  test -f $SYSTEM/usr/bin/gdb ||  build_binutils_gdb || die "build_binutils_gdb"
 #  test -f $SYSTEM/usr/bin/gcc || build_gcc || die "build_gcc"
 #  test -f $SYSTEM/bin/busybox || build_busybox || die "build_busybox"

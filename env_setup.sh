@@ -50,6 +50,8 @@ download_source() {
     "http://dev.gentoo.org/~blueness/eudev/eudev-1.7.tar.gz" \
     "http://kbd-project.org/download/kbd-2.0.4.tar.xz" \
     "https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-3.3.12.tar.xz" \
+    "https://www.openssl.org/source/openssl-1.0.2l.tar.gz" \
+    "https://github.com/openssh/openssh-portable/archive/V_7_5_P1.tar.gz" \
   )
   mkdir -p $TOPDIR/tarball
   pushd $TOPDIR/tarball
@@ -545,6 +547,44 @@ build_util_linux() {
       --disable-wall \
       --disable-eject \
       || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_openssl() {
+  if [ ! -d $TOPDIR/source/openssl-1.0.2l ]; then
+    tar -xf $TOPDIR/tarball/openssl-1.0.2l.tar.gz -C $TOPDIR/source/
+  fi
+
+  pushd $TOPDIR/source/openssl-1.0.2l
+    CC=gcc AR="ar r" RANLIB=ranlib $TOPDIR/source/openssl-1.0.2l/Configure dist no-shared \
+      --prefix=$SYSROOT/usr/ \
+      || return 1
+    make -j${JOBS} || return 1
+    make install || return 1
+  popd
+}
+
+build_openssh() {
+  if [ ! -d $TOPDIR/source/openssh-portable-V_7_5_P1 ]; then
+    tar -xf $TOPDIR/tarball/V_7_5_P1.tar.gz -C $TOPDIR/source/
+  fi
+
+  pushd $TOPDIR/source/openssh-portable-V_7_5_P1
+    autoreconf
+    LD=${CROSS_COMPILE}gcc STRIP=${CROSS_COMPILE}strip $TOPDIR/source/openssh-portable-V_7_5_P1/configure \
+      --host=$CLFS_TARGET \
+      --prefix=$SYSROOT/usr/ \
+      --exec-prefix=$SYSROOT/usr \
+      --sysconfdir=$SYSROOT/etc/ssh \
+      --with-zlib=$SYSROOT/usr/lib64 \
+      --with-privsep-path=$SYSROOT/var/empty \
+      --with-libs \
+      --disable-etc-default-login \
+      --without-openssl \
+      || return 1
+    sed -i '/^STRIP_OPT.*/d;/^install\>:/s/ host-key check-config//' Makefile
     make -j${JOBS} || return 1
     make install || return 1
   popd
