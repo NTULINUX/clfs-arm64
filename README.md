@@ -29,15 +29,15 @@ This project contains the following items:
         . env_setup.sh
         gdb_attach
 
-### 文件结构
+### file hierarchy
 
-- build: 编译用的临时文件夹
-- configs: kernel 和 busybox 的配置文件
-- git: 使用 git clone 下载的代码
-- source: 解压出来的源文件
-- tarball: 下载下载的压缩源文件
-- tools: 编译出来的 host 机器工具，包括工具链
-- out: 编译得到的 target 目标
+- build: build directory for holding temp objects.
+- configs: kernel defconfig, config files for target system.
+- git: source code from git repo.
+- source: source code from tarball.
+- tarball: source code tarball.
+- tools: object files, mainly contains toolchain, qemu and so on.
+- out: output files.
 
 ### prerequisite packages:
 
@@ -48,9 +48,9 @@ This project contains the following items:
         dnf whatprovides */<program>
 
 - ubuntu:
-    apt-get install libglib2.0-dev libpixman-1-dev libfdt-dev zlib1g-dev texinfo bison flex gawk autoconf autopoint libncurses5-dev build-essential bridge-utils openvpn
-    NOTES:
-    bridge-utils, openvpn: for creating host tap device that needs by networking.
+    apt-get install bc libglib2.0-dev libpixman-1-dev libfdt-dev zlib1g-dev texinfo bison flex gawk autoconf autopoint libncurses5-dev build-essential bridge-utils openvpn
+
+        NOTES: bridge-utils, openvpn: for creating host tap device that needs by networking.
 
 
 ### 其他

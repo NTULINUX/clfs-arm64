@@ -52,6 +52,7 @@ download_source() {
     "https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-3.3.12.tar.xz" \
     "https://www.openssl.org/source/openssl-1.0.2l.tar.gz" \
     "https://github.com/openssh/openssh-portable/archive/V_7_5_P1.tar.gz" \
+    "https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-4.9.0.tar.xz" \
   )
   mkdir -p $TOPDIR/tarball
   pushd $TOPDIR/tarball
@@ -157,22 +158,6 @@ clean_build_env() {
   unset LDFLAGS
   unset CFLAGS
   unset LIBS
-}
-
-build_strace() {
-  if [ ! -d $TOPDIR/source/strace-4.11 ]; then
-    tar -xf $TOPDIR/tarball/strace-4.11.tar.xz -C $TOPDIR/source/
-  fi
-
-  mkdir -p $TOPDIR/build/strace
-  pushd $TOPDIR/build/strace
-    $TOPDIR/source/strace-4.11/configure \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr \
-      || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
 }
 
 # sudo apt-get install zlib1g-dev
@@ -340,6 +325,22 @@ build_gcc () {
   popd
 }
 
+build_strace() {
+  if [ ! -d $TOPDIR/source/strace-4.11 ]; then
+    tar -xf $TOPDIR/tarball/strace-4.11.tar.xz -C $TOPDIR/source/
+  fi
+
+  mkdir -p $TOPDIR/build/strace
+  pushd $TOPDIR/build/strace
+    $TOPDIR/source/strace-4.11/configure \
+      --host=$CLFS_TARGET \
+      --prefix=$SYSROOT/usr \
+      || return 1
+    make -j${JOBS} || return 1
+    make install
+  popd
+}
+
 build_bash() {
   if [ ! -d $TOPDIR/source/bash-4.4 ]; then
     tar -xzf $TOPDIR/tarball/bash-4.4.tar.gz -C $TOPDIR/source
@@ -430,6 +431,19 @@ build_coreutils() {
   popd
 }
 
+build_iproute2() {
+  if [ ! -d $TOPDIR/source/iproute2-4.9.0 ]; then
+    tar -xf $TOPDIR/tarball/iproute2-4.9.0.tar.xz -C $TOPDIR/source
+  fi
+
+  pushd $TOPDIR/source/iproute2-4.9.0
+    # for cross compiling
+    sed -i 's/^CC :=.*$/CC := aarch64-linux-gnu-gcc/;s/^HOSTCC ?=.*$/HOSTCC ?= gcc/' Makefile || return 1
+    make -j${JOBS} || return 1
+    # can't use make install
+    cp -v ip/ip bridge/bridge misc/{lnstat,ss} tc/tc $SYSROOT/sbin/
+  popd
+}
 
 build_find() {
   if [ ! -d $TOPDIR/source/findutils-4.6.0 ]; then
