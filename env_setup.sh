@@ -477,6 +477,7 @@ build_ncurses() {
       --host=$CLFS_TARGET \
       --prefix=$SYSROOT/usr \
       --libdir=$SYSROOT/usr/lib64 \
+      --with-terminfo-dirs=/usr/lib/terminfo \
       --with-termlib=tinfo \
       --without-ada \
       --without-debug \
