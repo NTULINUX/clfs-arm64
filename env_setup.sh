@@ -53,6 +53,7 @@ download_source() {
     "https://www.openssl.org/source/openssl-1.0.2l.tar.gz" \
     "https://github.com/openssh/openssh-portable/archive/V_7_5_P1.tar.gz" \
     "https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-4.9.0.tar.xz" \
+    "https://downloads.sourceforge.net/project/net-tools/net-tools-1.60.tar.bz2" \
   )
   mkdir -p $TOPDIR/tarball
   pushd $TOPDIR/tarball
@@ -356,6 +357,7 @@ build_bash() {
 	|| return 1
     make -j${JOBS} || return 1
     make install
+    rm -f $SYSROOT/bin/bashbug
     cd $SYSROOT/bin && ln -sf bash sh
   popd
 }
@@ -385,29 +387,13 @@ build_busybox() {
     tar -xjf $TOPDIR/tarball/busybox-1.24.2.tar.bz2 -C $TOPDIR/source
   fi
   pushd $TOPDIR/source/busybox-1.24.2
-    if [ "x$1" == "xstatic" ]; then
-      sed "s/# CONFIG_STATIC is not set/CONFIG_STATIC=y/" $TOPDIR/configs/busybox.config > .config
-    else
-      cp $TOPDIR/configs/busybox.config .config
-    fi
-    make || return 1
-    cp busybox $SYSTEM/bin/
-    cd $SYSTEM
-    rm -f linuxrc
-    ln -sf bin/busybox init
-    mkdir -p $SYSTEM/etc/init.d
-    echo "mount -t proc procfs /proc" > $SYSTEM/etc/init.d/rcS
-    echo "mount -t sysfs sysfs /sys" >> $SYSTEM/etc/init.d/rcS
-    echo "mount -t debugfs debugfs /sys/kernel/debug" >> $SYSTEM/etc/init.d/rcS
-    echo "echo /sbin/mdev > /proc/sys/kernel/hotplug" >> $SYSTEM/etc/init.d/rcS
-    echo "mdev -s" >> $SYSTEM/etc/init.d/rcS
-    grep 'CONFIG_VT' $TOPDIR/build/kernel/.config &> /dev/null
-    if [ $? -ne 0 ]; then
-      echo "ln -sf /dev/null /dev/tty2" >> $SYSTEM/etc/init.d/rcS
-      echo "ln -sf /dev/null /dev/tty3" >> $SYSTEM/etc/init.d/rcS
-      echo "ln -sf /dev/null /dev/tty4" >> $SYSTEM/etc/init.d/rcS
-    fi
-    chmod +x $SYSTEM/etc/init.d/rcS
+    cp $TOPDIR/configs/busybox.config .config
+    make -j${JOBS} || return 1
+    cp busybox $SYSROOT/bin/
+    cd $SYSROOT/bin/
+    ln -sf busybox ip
+    ln -sf busybox hostname
+    ln -sf busybox ifconfig
   popd
 }
 
@@ -431,6 +417,7 @@ build_coreutils() {
   popd
 }
 
+# can pass building in some machine.. to use busybox instead?
 build_iproute2() {
   if [ ! -d $TOPDIR/source/iproute2-4.9.0 ]; then
     tar -xf $TOPDIR/tarball/iproute2-4.9.0.tar.xz -C $TOPDIR/source
@@ -442,6 +429,17 @@ build_iproute2() {
     make -j${JOBS} || return 1
     # can't use make install
     cp -v ip/ip bridge/bridge misc/{lnstat,ss} tc/tc $SYSROOT/sbin/
+  popd
+}
+
+# can pass building, maybe will add this later..
+build_nettools() {
+  if [ ! -d $TOPDIR/source/net-tools-1.60 ]; then
+    tar -xf $TOPDIR/tarball/net-tools-1.60.tar.bz2 -C $TOPDIR/source
+  fi
+
+  pushd $TOPDIR/source/net-tools-1.60
+    CC=aarch64-linux-gnu-gcc make
   popd
 }
 
