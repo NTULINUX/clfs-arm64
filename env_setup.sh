@@ -1,4 +1,7 @@
+#!/usr/bin/env bash
+
 ## Copyright (C) 2016 - 2017 zhizhou zhang <zhizhou.zh@gmail.com>
+## Copyright (C) 2017 Alec Ari <neotheuser@ymail.com>
 ##
 ## This program is free software: you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -13,790 +16,692 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-export ARCH=arm64
-export CROSS_COMPILE=aarch64-linux-gnu-
-export TOPDIR=$(pwd)
-export SYSTEM=$TOPDIR/out/root
-export PATH=$TOPDIR/tools/bin:$PATH
-export SYSIMG=$TOPDIR/out/system.img
-export CLFS_TARGET=aarch64-linux-gnu
-export CLFS_HOST=$(echo ${MACHTYPE} | sed -e 's/-[^-]*/-cross/')
-export TOOLDIR=$TOPDIR/tools
-export SYSROOT=$TOOLDIR/root
+unset STARTDIR
+unset TARDIR
+unset SRCDIR
+unset BUILD_DIR
+unset PREFIX
+unset SYSROOT
 
-JOBS=$(cat /proc/cpuinfo | grep processor | wc -l)
+unset CC
+unset CXX
+unset LD
+unset AR
+unset AS
+unset RANLIB
+unset STRIP
+unset CFLAGS
+unset CXXFLAGS
+unset LDFLAGS
+unset LIBS
 
-gdb_attach() {
-  aarch64-linux-gnu-gdb --command=./.gdb.cmd
+STARTDIR="${PWD}"
+TARDIR="${STARTDIR}/tarballs"
+SRCDIR="${STARTDIR}/src"
+
+CLFS_HOST=$(echo "${MACHTYPE}" | sed -e 's/-[^-]*/-cross/')
+CROSS_COMPILE="aarch64-rpi3-linux-gnueabihf-"
+CLFS_TARGET="aarch64-rpi3-linux-gnueabihf"
+BUILD_DIR="${STARTDIR}/build"
+PREFIX="${STARTDIR}/cross-tools"
+SYSROOT="${STARTDIR}/cross-tools/${CLFS_TARGET}"
+
+LINUX_VER="4.9.35"
+LINUX_MAJOR_VER="v4.x"
+GCC_VER="6.3.0"
+MPFR_VER="3.1.5"
+MPC_VER="1.0.3"
+GMP_VER="6.1.2"
+GLIBC_VER="2.25"
+GPERF_VER="3.1"
+BASH_VER="4.4"
+BASH_VER_CUT="44"
+BASH_PATCHLEVEL="p12"
+BINUTILS_VER="2.28"
+NCURSES_VER="6.0"
+ZLIB_VER="1.2.11"
+COREUTILS_VER="8.27"
+UTIL_LINUX_VER="2.30"
+FINDUTILS_VER="4.6.0"
+GREP_VER="3.1"
+GZIP_VER="1.8"
+SED_VER="4.4"
+GAWK_VER="4.1.4"
+PAM_VER="1.3.0"
+SHADOW_VER="4.5"
+SYSVINIT_VER="2.88dsf"
+EUDEV_VER="3.2.2"
+PROCPS_VER="3.3.12"
+LIBRESSL_VER="2.5.4"
+IPROUTE2_VER="4.11.0"
+NET_TOOLS_VER="1.60"
+TAR_VER="1.29"
+
+LINUX_COMP="${TARDIR}/linux-${LINUX_VER}.tar.xz"
+GCC_COMP="${TARDIR}/gcc-${GCC_VER}.tar.bz2"
+MPFR_COMP="${TARDIR}/mpfr-${MPFR_VER}.tar.xz"
+MPC_COMP="${TARDIR}/mpc-${MPC_VER}.tar.gz"
+GMP_COMP="${TARDIR}/gmp-${GMP_VER}.tar.xz"
+GLIBC_COMP="${TARDIR}/glibc-${GLIBC_VER}.tar.bz2"
+GPERF_COMP="${TARDIR}/gperf-${GPERF_VER}.tar.gz"
+BASH_COMP="${TARDIR}/bash-${BASH_VER}.tar.gz"
+BINUTILS_COMP="${TARDIR}/binutils-${BINUTILS_VER}.tar.bz2"
+NCURSES_COMP="${TARDIR}/ncurses-${NCURSES_VER}.tar.gz"
+ZLIB_COMP="${TARDIR}/zlib-${ZLIB_VER}.tar.gz"
+COREUTILS_COMP="${TARDIR}/coreutils-${COREUTILS_VER}.tar.xz"
+UTIL_LINUX_COMP="${TARDIR}/util-linux-${UTIL_LINUX_VER}.tar.xz"
+FINDUTILS_COMP="${TARDIR}/findutils-${FINDUTILS_VER}.tar.gz"
+GREP_COMP="${TARDIR}/grep-${GREP_VER}.tar.xz"
+GZIP_COMP="${TARDIR}/gzip-${GZIP_VER}.tar.xz"
+SED_COMP="${TARDIR}/sed-${SED_VER}.tar.xz"
+GAWK_COMP="${TARDIR}/gawk-${GAWK_VER}.tar.xz"
+PAM_COMP="${TARDIR}/Linux-PAM-${PAM_VER}.tar.gz"
+SHADOW_COMP="${TARDIR}/shadow-${SHADOW_VER}.tar.xz"
+SYSVINIT_COMP="${TARDIR}/sysvinit-${SYSVINIT_VER}.tar.bz2"
+EUDEV_COMP="${TARDIR}/v${EUDEV_VER}.tar.gz"
+PROCPS_COMP="${TARDIR}/procps-ng-${PROCPS_VER}.tar.xz"
+LIBRESSL_COMP="${TARDIR}/libressl-${LIBRESSL_VER}.tar.gz"
+IPROUTE2_COMP="${TARDIR}/iproute2-${IPROUTE2_VER}.tar.xz"
+NET_TOOLS_COMP="${TARDIR}/net-tools-${NET_TOOLS_VER}.tar.bz2"
+TAR_COMP="${TARDIR}/tar-${TAR_VER}.tar.xz"
+
+LINUX_SRCDIR="${SRCDIR}/linux-${LINUX_VER}"
+GCC_SRCDIR="${SRCDIR}/gcc-${GCC_VER}"
+MPFR_SRCDIR="${SRCDIR}/mpfr-${MPFR_VER}"
+MPC_SRCDIR="${SRCDIR}/mpc-${MPC_VER}"
+GMP_SRCDIR="${SRCDIR}/gmp-${GMP_VER}"
+GLIBC_SRCDIR="${SRCDIR}/glibc-${GLIBC_VER}"
+GPERF_SRCDIR="${SRCDIR}/gperf-${GPERF_VER}"
+BASH_SRCDIR="${SRCDIR}/bash-${BASH_VER}_${BASH_PATCHLEVEL}"
+BINUTILS_SRCDIR="${SRCDIR}/binutils-${BINUTILS_VER}"
+NCURSES_SRCDIR="${SRCDIR}/ncurses-${NCURSES_VER}"
+ZLIB_SRCDIR="${SRCDIR}/zlib-${ZLIB_VER}"
+COREUTILS_SRCDIR="${SRCDIR}/coreutils-${COREUTILS_VER}"
+UTIL_LINUX_SRCDIR="${SRCDIR}/util-linux-${UTIL_LINUX_VER}"
+FINDUTILS_SRCDIR="${SRCDIR}/findutils-${FINDUTILS_VER}"
+GREP_SRCDIR="${SRCDIR}/grep-${GREP_VER}"
+GZIP_SRCDIR="${SRCDIR}/gzip-${GZIP_VER}"
+SED_SRCDIR="${SRCDIR}/sed-${SED_VER}"
+GAWK_SRCDIR="${SRCDIR}/gawk-${GAWK_VER}"
+PAM_SRCDIR="${SRCDIR}/pam-${PAM_VER}"
+SHADOW_SRCDIR="${SRCDIR}/shadow-${SHADOW_VER}"
+SYSVINIT_SRCDIR="${SRCDIR}/sysvinit-${SYSVINIT_VER}"
+EUDEV_SRCDIR="${SRCDIR}/eudev-${EUDEV_VER}"
+PROCPS_SRCDIR="${SRCDIR}/procps-${PROCPS_VER}"
+LIBRESSL_SRCDIR="${SRCDIR}/libressl-${LIBRESSL_VER}"
+IPROUTE2_SRCDIR="${SRCDIR}/iproute2-${IPROUTE2_VER}"
+NET_TOOLS_SRCDIR="${SRCDIR}/net-tools-${NET_TOOLS_VER}"
+TAR_SRCDIR="${SRCDIR}/tar-${TAR_VER}"
+
+JOBS=$(grep -c processor /proc/cpuinfo)
+
+prep_dirs()
+{
+if [[ -w "${STARTDIR}" ]] ; then
+	printf "\n\tUser has write permissions to %s\n" "${STARTDIR}"
+else
+	printf "\n\tPlease switch to a user writeable directory, such as your home folder.\n"
+	exit 1
+fi
+
+	mkdir -p "${BUILD_DIR}"
+	mkdir -p "${TARDIR}"
+	mkdir -p "${SRCDIR}"
+	mkdir -p "${SYSROOT}"
 }
 
-croot() {
-  cd $TOPDIR
+fetch_sources()
+{
+SOURCES=("https://cdn.kernel.org/pub/linux/kernel/${LINUX_MAJOR_VER}/linux-${LINUX_VER}.tar.xz"
+	"ftp://ftp.gnu.org/gnu/gcc/gcc-${GCC_VER}/gcc-${GCC_VER}.tar.bz2"
+	"https://ftp.gnu.org/gnu/mpfr/mpfr-${MPFR_VER}.tar.xz"
+	"http://ftp.gnu.org/gnu/mpc/mpc-${MPC_VER}.tar.gz"
+	"https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VER}.tar.xz"
+	"https://ftp.gnu.org/gnu/libc/glibc-${GLIBC_VER}.tar.bz2"
+	"https://ftp.gnu.org/gnu/gperf/gperf-${GPERF_VER}.tar.gz"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}.tar.gz"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-001"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-002"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-003"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-004"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-005"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-006"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-007"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-008"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-009"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-010"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-011"
+	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-012"
+	"https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VER}.tar.bz2"
+	"http://ftp.gnu.org/gnu/ncurses/ncurses-${NCURSES_VER}.tar.gz"
+	"https://www.zlib.net/zlib-${ZLIB_VER}.tar.gz"
+	"http://ftp.gnu.org/gnu/coreutils/coreutils-${COREUTILS_VER}.tar.xz"
+	"https://www.kernel.org/pub/linux/utils/util-linux/v${UTIL_LINUX_VER}/util-linux-${UTIL_LINUX_VER}.tar.xz"
+	"http://ftp.gnu.org/gnu/findutils/findutils-${FINDUTILS_VER}.tar.gz"
+	"http://ftp.gnu.org/gnu/grep/grep-${GREP_VER}.tar.xz"
+	"http://ftp.gnu.org/gnu/gzip/gzip-${GZIP_VER}.tar.xz"
+	"http://ftp.gnu.org/gnu/sed/sed-${SED_VER}.tar.xz"
+	"http://ftp.gnu.org/gnu/gawk/gawk-${GAWK_VER}.tar.xz"
+	"http://www.linux-pam.org/library/Linux-PAM-${PAM_VER}.tar.gz"
+	"https://github.com/shadow-maint/shadow/releases/download/${SHADOW_VER}/shadow-${SHADOW_VER}.tar.xz"
+	"http://download.savannah.gnu.org/releases/sysvinit/sysvinit-${SYSVINIT_VER}.tar.bz2"
+	"https://github.com/gentoo/eudev/archive/v${EUDEV_VER}.tar.gz"
+	"https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-${PROCPS_VER}.tar.xz"
+	"https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-${LIBRESSL_VER}.tar.gz"
+	"https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-${IPROUTE2_VER}.tar.xz"
+	"https://downloads.sourceforge.net/project/net-tools/net-tools-${NET_TOOLS_VER}.tar.bz2"
+	"http://ftp.gnu.org/gnu/tar/tar-${TAR_VER}.tar.xz")
+
+	printf "\n\tFetching sources...\n\n"
+	cd "${TARDIR}"
+	for source in "${SOURCES[@]}" ; do
+		wget -c -q --retry-connrefused -t 3 -T 5 "$source"
+	done
 }
 
-download_source() {
-  declare -a tarball_list=( \
-    "ftp://ftp.gnu.org/gnu/gcc/gcc-7.1.0/gcc-7.1.0.tar.bz2" \
-    "https://ftp.gnu.org/gnu/mpfr/mpfr-3.1.5.tar.xz" \
-    "ftp://gcc.gnu.org/pub/gcc/infrastructure/isl-0.16.1.tar.bz2" \
-    "https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.xz" \
-    "http://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz" \
-    "https://ftp.gnu.org/gnu/libc/glibc-2.25.tar.bz2" \
-    "https://ftp.gnu.org/gnu/gperf/gperf-3.1.tar.gz" \
-    "https://ftp.gnu.org/gnu/bash/bash-4.4.tar.gz" \
-    "http://downloads.sourceforge.net/project/strace/strace/4.11/strace-4.11.tar.xz" \
-    "https://github.com/bminor/binutils-gdb/archive/gdb-7.12.1-release.tar.gz" \
-    "http://busybox.net/downloads/busybox-1.24.2.tar.bz2" \
-    "http://ftp.gnu.org/gnu/ncurses/ncurses-6.0.tar.gz" \
-    "https://www.zlib.net/zlib-1.2.11.tar.gz" \
-    "http://ftp.gnu.org/gnu/coreutils/coreutils-8.23.tar.xz" \
-    "http://ftp.bjtu.edu.cn/clfs/clfs-packages/svn/coreutils-8.23-noman-1.patch" \
-    "https://www.kernel.org/pub/linux/utils/util-linux/v2.29/util-linux-2.29.2.tar.xz" \
-    "http://ftp.gnu.org/gnu/findutils/findutils-4.6.0.tar.gz" \
-    "http://ftp.gnu.org/gnu/grep/grep-2.23.tar.xz" \
-    "http://ftp.gnu.org/gnu/gzip/gzip-1.6.tar.xz" \
-    "http://ftp.gnu.org/gnu/sed/sed-4.2.2.tar.bz2" \
-    "http://ftp.gnu.org/gnu/gawk/gawk-4.1.3.tar.xz" \
-    "http://www.linux-pam.org/library/Linux-PAM-1.3.0.tar.gz" \
-    "https://github.com/shadow-maint/shadow/releases/download/4.5/shadow-4.5.tar.xz" \
-    "http://download.savannah.gnu.org/releases/sysvinit/sysvinit-2.88dsf.tar.bz2" \
-    "http://clfs.org/files/packages/3.0.0/SYSVINIT/bootscripts-cross-lfs-3.0-20140710.tar.xz" \
-    "http://dev.gentoo.org/~blueness/eudev/eudev-1.7.tar.gz" \
-    "http://kbd-project.org/download/kbd-2.0.4.tar.xz" \
-    "https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-3.3.12.tar.xz" \
-    "https://www.openssl.org/source/openssl-1.0.2l.tar.gz" \
-    "https://github.com/openssh/openssh-portable/archive/V_7_5_P1.tar.gz" \
-    "https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-4.9.0.tar.xz" \
-    "https://downloads.sourceforge.net/project/net-tools/net-tools-1.60.tar.bz2" \
-  )
-  mkdir -p $TOPDIR/tarball
-  pushd $TOPDIR/tarball
-    for i in "${tarball_list[@]}"; do
-      filename=${i##*/}
-      if [ ! -f $filename ]; then
-        # retry 3 times
-        wget $i || wget $i || wget $i || return 1
-      fi
-    done
-  popd
-}
+unpack_sources()
+{
+	printf "\n\tDecompressing source tarballs...\n\n"
 
-build_kernel() {
-  mkdir -p $TOPDIR/build/kernel
-  pushd $TOPDIR/git/kernel
-    if [ ! -f $TOPDIR/build/kernel/.config ]; then
-      cp $TOPDIR/configs/kernel_defconfig $TOPDIR/git/kernel/arch/arm64/configs/tmp_defconfig
-      make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- O=$TOPDIR/build/kernel tmp_defconfig
-      rm $TOPDIR/git/kernel/arch/arm64/configs/tmp_defconfig
-    fi
-  popd
-  pushd $TOPDIR/build/kernel
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j${JOBS} || return 1
-    ln -sf $PWD/arch/arm64/boot/Image $TOPDIR/out/
-    ln -sf $PWD/vmlinux $TOPDIR/out
-    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- tools/perf
-    cp tools/perf/perf $SYSTEM/usr/bin
-  popd
-}
+	if [[ ! -d "${LINUX_SRCDIR}" ]] ; then
+		tar xJf "${LINUX_COMP}" -C "${SRCDIR}"/ || \
+		{
+				printf "\tError decompressing %s. Exiting.\n" "${LINUX_COMP}" ; exit 1 ;
+		}
+	fi
 
-# sudo apt-get install libglib2.0-dev libpixman-1-dev libfdt-dev
-build_qemu() {
-  mkdir -p $TOPDIR/build/qemu
-  pushd $TOPDIR/build/qemu
-    CFLAGS=-O2 $TOPDIR/git/qemu/configure \
-      --prefix=$TOOLDIR \
-      --target-list=aarch64-softmmu \
-      --source-path=$TOPDIR/git/qemu || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
-}
+	if [[ ! -d "${GCC_SRCDIR}" ]] ; then
+		tar xjf "${GCC_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${GCC_COMP}" ; exit 1 ;
+		}
+	fi
 
-do_install() {
-  cp -a $SYSROOT/* $SYSTEM/
-}
-
-do_update() {
-  pushd $1
-  git pull
-  popd
-}
+	if [[ ! -d "${MPFR_SRCDIR}" ]] ; then
+		tar xJf "${MPFR_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${MPFR_COMP}" ; exit 1 ;
+		}
+	fi
 
 
-run() {
-  qemu-system-aarch64 \
-    -machine virt \
-    -cpu cortex-a53 \
-    -m 512M \
-    -kernel $TOPDIR/out/Image \
-    -smp 1 \
-    -drive "file=$SYSIMG,media=disk,format=raw" \
-    --append "rootfstype=ext4 rw root=/dev/vda earlycon" \
-    -nographic $*
+	if [[ ! -d "${MPC_SRCDIR}" ]] ; then
+		tar xzf "${MPC_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${MPC_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${GMP_SRCDIR}" ]] ; then
+		tar xJf "${GMP_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${GMP_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${GLIBC_SRCDIR}" ]] ; then
+		tar xjf "${GLIBC_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${GLIBC_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${GPERF_SRCDIR}" ]] ; then
+		tar xzf "${GPERF_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${GPERF_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${BASH_SRCDIR}" ]] ; then
+		tar xzf "${BASH_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${BASH_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${BINUTILS_SRCDIR}" ]] ; then
+		tar xjf "${BINUTILS_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${BINUTILS_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${NCURSES_SRCDIR}" ]] ; then
+		tar xzf "${NCURSES_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${NCURSES_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${ZLIB_SRCDIR}" ]] ; then
+		tar xzf "${ZLIB_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${ZLIB_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${COREUTILS_SRCDIR}" ]] ; then
+		tar xJf "${COREUTILS_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${COREUTILS_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${UTIL_LINUX_SRCDIR}" ]] ; then
+		tar xJf "${UTIL_LINUX_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${UTIL_LINUX_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${FINDUTILS_SRCDIR}" ]] ; then
+		tar xzf "${FINDUTILS_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${FINDUTILS_TARDIR}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${GREP_SRCDIR}" ]] ; then
+		tar xJf "${GREP_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${GREP_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${GZIP_SRCDIR}" ]] ; then
+		tar xJf "${GZIP_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${GZIP_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${SED_SRCDIR}" ]] ; then
+		tar xJf "${SED_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${SED_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${GAWK_SRCDIR}" ]] ; then
+		tar xJf "${GAWK_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${GAWK_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${PAM_SRCDIR}" ]] ; then
+		tar xzf "${PAM_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${PAM_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${SHADOW_SRCDIR}" ]] ; then
+		tar xJf "${SHADOW_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${SHADOW_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${SYSVINIT_SRCDIR}" ]] ; then
+		tar xjf "${SYSVINIT_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${SYSVINIT_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${EUDEV_SRCDIR}" ]] ; then
+		tar xzf "${EUDEV_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${EUDEV_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${PROCPS_SRCDIR}" ]] ; then
+		tar xJf "${PROCPS_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${PROCPS_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${LIBRESSL_SRCDIR}" ]] ; then
+		tar xzf "${LIBRESSL_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${LIBRESSL_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${IPROUTE2_SRCDIR}" ]] ; then
+		tar xJf "${IPROUTE2_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${IPROUTE2_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${NET_TOOLS_SRCDIR}" ]] ; then
+		tar xjf "${NET_TOOLS_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${NET_TOOLS_COMP}" ; exit 1 ;
+		}
+	fi
+
+	if [[ ! -d "${TAR_SRCDIR}" ]] ; then
+		tar xJf "${TAR_COMP}" -C "${SRCDIR}"/ || \
+		{
+			printf "\tError decompressing %s. Exiting.\n" "${TAR_COMP}" ; exit 1 ;
+		}
+	fi
 }
 
-run_net() {
-  sudo $TOPDIR/tools/bin/qemu-system-aarch64 \
-    -machine virt \
-    -cpu cortex-a53 \
-    -m 512M \
-    -kernel $TOPDIR/out/Image \
-    -smp 1 \
-    -drive "file=$SYSIMG,media=disk,format=raw" \
-    --append "rootfstype=ext4 rw root=/dev/vda earlycon" \
-    --netdev type=tap,id=net0 -device virtio-net-device,netdev=net0 \
-    -nographic $*
+build_toolchain() {
+	# Crosstool-NG goes here
 }
+
+# TODO: Finish re-writing everything below this line.
 
 prepare_build_env() {
-  export CC=${CROSS_COMPILE}gcc
-  export LD=${CROSS_COMPILE}ld
-  export AR=${CROSS_COMPILE}ar
-  export AS=${CROSS_COMPILE}as
-  export RANDLIB=${CROSS_COMPILE}randlib
-  export STRIP=${CROSS_COMPILE}strip
-  export CXX=${CROSS_COMPILE}g++
-  export CFLAGS=-O2
-  export LDFLAGS=
-  export LDFLAGS=
-  export LIBS=-lpthread
-}
-
-clean_build_env() {
-  unset CC
-  unset LD
-  unset AR
-  unset AS
-  unset RANDLIB
-  unset STRIP
-  unset CXX
-  unset LDFLAGS
-  unset CFLAGS
-  unset LIBS
-}
-
-# sudo apt-get install zlib1g-dev
-build_toolchain() {
-    ## kernel headers
-  pushd $TOPDIR/git/kernel
-    ARCH=arm64 CROSS_COMPILE= make INSTALL_HDR_PATH=$SYSROOT/usr headers_install
-    CROSS_COMPILE= make mrproper
-  popd
-
-    ## binutils
-  if [ ! -d $TOPDIR/source/binutils-gdb ]; then
-    tar -xzf $TOPDIR/tarball/gdb-7.12.1-release.tar.gz -C $TOPDIR/source/
-    mv $TOPDIR/source/binutils-gdb-gdb-7.12.1-release $TOPDIR/source/binutils-gdb
-  fi
-  mkdir -p $TOPDIR/build/binutils
-  pushd $TOPDIR/build/binutils
-    AR=ar AS=as CFLAGS=-O2 $TOPDIR/source/binutils-gdb/configure \
-      --prefix=$TOOLDIR \
-      --host=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      --with-sysroot=$SYSROOT \
-      --disable-nls \
-      --enable-shared \
-      --disable-multilib  || return 1
-    make configure-host || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-
-    ## gcc stage 1
-  if [ ! -d $TOPDIR/source/gcc-7.1.0 ]; then
-    tar -xjf $TOPDIR/tarball/gcc-7.1.0.tar.bz2 -C $TOPDIR/source
-    pushd $TOPDIR/source/gcc-7.1.0
-    tar -xf $TOPDIR/tarball/mpfr-3.1.5.tar.xz && ln -sf mpfr-3.1.5 mpfr
-    tar -xf $TOPDIR/tarball/gmp-6.1.2.tar.xz &&  ln -sf gmp-6.1.2 gmp
-    tar -xzf $TOPDIR/tarball/mpc-1.0.3.tar.gz && ln -sf mpc-1.0.3 mpc
-    tar -xjf $TOPDIR/tarball/isl-0.16.1.tar.bz2 && ln -sf isl-0.16.1 isl
-    popd
-  fi
-  mkdir -p $TOPDIR/build/gcc-stage-1
-  pushd $TOPDIR/build/gcc-stage-1
-    CFLAGS=-O2 $TOPDIR/source/gcc-7.1.0/configure \
-      --build=$CLFS_HOST \
-      --host=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      --prefix=$TOOLDIR \
-      --with-sysroot=$SYSROOT \
-      --with-newlib \
-      --without-headers \
-      --with-native-system-header-dir=/usr/include \
-      --disable-nls \
-      --disable-shared \
-      --disable-decimal-float \
-      --disable-libgomp \
-      --disable-libmudflap \
-      --disable-libssp \
-      --disable-libatomic \
-      --disable-libitm \
-      --disable-libsanitizer \
-      --disable-libquadmath \
-      --disable-threads \
-      --disable-multilib \
-      --disable-target-zlib \
-      --with-system-zlib \
-      --enable-languages=c \
-      --enable-checking=release || return 1
-    make -j${JOBS} all-gcc all-target-libgcc || return 1
-    make install-gcc install-target-libgcc || return 1
-  popd
-
-    ## glibc
-  if [ ! -d $TOPDIR/source/glibc-2.25 ]; then
-    tar -xjf $TOPDIR/tarball/glibc-2.25.tar.bz2 -C $TOPDIR/source
-  fi
-  VER=$(grep -o '[0-9]\.[0-9]\.[0-9]' $TOPDIR/build/kernel/.config)
-  mkdir -p $TOPDIR/build/glibc
-  pushd $TOPDIR/build/glibc
-    echo "libc_cv_forced_unwind=yes" > config.cache
-    echo "libc_cv_c_cleanup=yes" >> config.cache
-    echo "install_root=$SYSROOT" > configparms
-    BUILD_CC="gcc" CC="${CLFS_TARGET}-gcc" AR="${CLFS_TARGET}-ar" \
-    RANLIB="${CLFS_TARGET}-ranlib" CFLAGS=-O2 $TOPDIR/source/glibc-2.25/configure \
-      --build=$CLFS_HOST \
-      --host=$CLFS_TARGET \
-      --prefix=/usr \
-      --libexecdir=/usr/lib/glibc \
-      --enable-kernel=$VER \
-      --with-binutils=$TOOLDIR/bin/ \
-      --with-headers=$SYSROOT/usr/include || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-
-  ## gcc stage 2
-  mkdir -p $TOPDIR/build/gcc-stage-2
-  pushd $TOPDIR/build/gcc-stage-2
-    AR=ar LDFLAGS="-Wl,-rpath,$TOOLDIR/lib" CFLAGS=-O2 \
-    $TOPDIR/source/gcc-7.1.0/configure \
-      --prefix=$TOOLDIR \
-      --build=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      --host=$CLFS_HOST \
-      --with-sysroot=$SYSROOT \
-      --enable-shared \
-      --enable-c99 \
-      --enable-linker-build-id \
-      --enable-long-long \
-      --with-arch=armv8-a \
-      --with-gnu-ld \
-      --with-gnu-as \
-      --enable-lto \
-      --enable-nls \
-      --enable-plugin \
-      --enable-multiarch \
-      --enable-languages=c,c++ \
-      --enable-__cxa_atexit \
-      --enable-threads=posix \
-      --with-system-zlib \
-      --enable-checking=release \
-      --enable-libstdcxx-time || return 1
-    make -j${JOBS} AS_FOR_TARGET="${CLFS_TARGET}-as" LD_FOR_TARGET="${CLFS_TARGET}-ld" || return 1
-    make install || return 1
-  popd
-
-  ## gperf
-  if [ ! -d $TOPDIR/source/gperf-3.1 ]; then
-    tar -xzf $TOPDIR/tarball/gperf-3.1.tar.gz -C $TOPDIR/source
-  fi
-
-  mkdir -p $TOPDIR/build/cross-gperf
-  pushd $TOPDIR/build/cross-gperf
-    $TOPDIR/source/gperf-3.1/configure \
-      --prefix=$TOOLDIR \
-      --host=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-
+	export CC="${CROSS_COMPILE}gcc"
+	export LD="${CROSS_COMPILE}ld"
+	export AR="${CROSS_COMPILE}ar"
+	export AS="${CROSS_COMPILE}as"
+	export RANDLIB="${CROSS_COMPILE}randlib"
+	export STRIP="${CROSS_COMPILE}strip"
+	export CXX="${CROSS_COMPILE}g++"
+	export CFLAGS="-O2"
+	export LDFLAGS=""
+	export LDFLAGS=""
+	export LIBS="-lpthread"
 }
 
 # build failed:
 # ld: cannot find /lib64/libpthread.so.0
+# ^ ???
 build_gcc () {
-  mkdir -p $TOPDIR/build/gcc
-  pushd $TOPDIR/build/gcc
-    $TOPDIR/source/gcc-7.1.0/configure \
-      --build=$CLFS_HOST \
-      --target=$CLFS_TARGET \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSTEM/usr/ \
-      --enable-shared \
-      --disable-nls \
-      --enable-c99 \
-      --enable-long-long \
-      --enable-languages=c,c++ \
-      --enable-__cxa_atexit \
-      --enable-threads=posix \
-      --with-system-zlib \
-      --enable-checking=release || return 1
-    make -j${JOBS} AS_FOR_TARGET="${CLFS_TARGET}-as" LD_FOR_TARGET="${CLFS_TARGET}-ld" || return 1
-    make install || return 1
-  popd
+	mkdir -p "${BUILD_DIR}"/gcc
+	cd "${BUILD_DIR}"/gcc
+	"${GCC_SRCDIR}"/configure \
+	--build="${CLFS_HOST}" \
+	--target="${CLFS_TARGET}" \
+	--host="${CLFS_TARGET}" \
+	--prefix="${TOOLDIR}" \
+	--enable-shared \
+	--disable-nls \
+	--enable-c99 \
+	--enable-long-long \
+	--enable-languages=c,c++ \
+	--enable-__cxa_atexit \
+	--enable-threads=posix \
+	--with-system-zlib \
+	--enable-checking=release || return 1
+	make -j"${JOBS}" AS_FOR_TARGET="${CLFS_TARGET}-as" LD_FOR_TARGET="${CLFS_TARGET}-ld" || return 1
+	make install || return 1
 }
 
-build_strace() {
-  if [ ! -d $TOPDIR/source/strace-4.11 ]; then
-    tar -xf $TOPDIR/tarball/strace-4.11.tar.xz -C $TOPDIR/source/
-  fi
+# Update to p12 (TODO)
+#build_bash() {
+#	# ?
+#	# sed -i '/#define SYS_BASHRC/c\#define SYS_BASHRC "/etc/bash.bashrc"' "${BASH_SRCDIR}"/config-top.h
+#
+#	mkdir -p "${BUILD_DIR}"/bash
+#	cd "${BUILD_DIR}"/bash
+#	"${BASH_SRCDIR}"/configure \
+#	--host="${CLFS_TARGET}" \
+#	--prefix="${SYSROOT}"/usr \
+#	--bindir="${SYSROOT}"/bin return 1
+#	make -j"${JOBS}" || return 1
+#	make install
+#	rm -f "${SYSROOT}"/bin/bashbug
+#	cd "${SYSROOT}"/bin && ln -sf bash sh
+#}
 
-  mkdir -p $TOPDIR/build/strace
-  pushd $TOPDIR/build/strace
-    $TOPDIR/source/strace-4.11/configure \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr \
-      || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
-}
-
-build_bash() {
-  if [ ! -d $TOPDIR/source/bash-4.4 ]; then
-    tar -xzf $TOPDIR/tarball/bash-4.4.tar.gz -C $TOPDIR/source
-    sed -i '/#define SYS_BASHRC/c\#define SYS_BASHRC "/etc/bash.bashrc"' $TOPDIR/source/bash-4.4/config-top.h
-  fi
-
-  mkdir -p $TOPDIR/build/bash
-  pushd $TOPDIR/build/bash
-    $TOPDIR/source/bash-4.4/configure \
-        --host=$CLFS_TARGET \
-	--prefix=$SYSROOT/usr \
-        --bindir=$SYSROOT/bin \
-	|| return 1
-    make -j${JOBS} || return 1
-    make install
-    rm -f $SYSROOT/bin/bashbug
-    cd $SYSROOT/bin && ln -sf bash sh
-  popd
-}
-
-# make sure these packages is installed:
-# sudo apt-get install texinfo bison flex
-build_binutils_gdb() {
-  if [ ! -d $TOPDIR/source/binutils-gdb ]; then
-    tar -xzf $TOPDIR/tarball/gdb-7.12.1-release.tar.gz -C $TOPDIR/source
-    mv $TOPDIR/source/binutils-gdb-gdb-7.12.1-release $TOPDIR/source/binutils-gdb
-  fi
-
-  mkdir -p $TOPDIR/build/binutils-gdb
-  pushd $TOPDIR/build/binutils-gdb
-    $TOPDIR/source/binutils-gdb/configure \
-      --host=$CLFS_TARGET \
-      --target=$CLFS_TARGET \
-      --prefix=$SYSTEM/ \
-      --enable-shared || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
-}
-
-build_busybox() {
-  if [ ! -d $TOPDIR/source/busybox-1.24.2 ]; then
-    tar -xjf $TOPDIR/tarball/busybox-1.24.2.tar.bz2 -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/busybox-1.24.2
-    cp $TOPDIR/configs/busybox.config .config
-    make -j${JOBS} || return 1
-    cp busybox $SYSROOT/bin/
-    cd $SYSROOT/bin/
-    ln -sf busybox ip
-    ln -sf busybox hostname
-    ln -sf busybox ifconfig
-  popd
+build_binutils() {
+	mkdir -p "${BUILD_DIR}"/binutils-gdb
+	cd "${BUILD_DIR}"/binutils-gdb
+	"${BINUTILS_SRCDIR}"/configure \
+	--host="${CLFS_TARGET}" \
+	--target="${CLFS_TARGET}" \
+	--prefix="${TOOLDIR}"/ \
+	--enable-shared || return 1
+	make -j"${JOBS}" || return 1
+	make install
 }
 
 build_coreutils() {
-  if [ ! -d $TOPDIR/source/coreutils-8.23 ]; then
-    tar -xf $TOPDIR/tarball/coreutils-8.23.tar.xz -C $TOPDIR/source
-    pushd $TOPDIR/source/coreutils-8.23
-    patch -p1 < $TOPDIR/tarball/coreutils-8.23-noman-1.patch
-    popd
-  fi
-
-  mkdir -p $TOPDIR/build/coreutils
-  pushd $TOPDIR/build/coreutils
-    $TOPDIR/source/coreutils-8.23/configure \
-        --host=$CLFS_TARGET \
-        --prefix=$SYSROOT/usr \
-        --bindir=$SYSROOT/bin \
-	 || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
+	mkdir -p "${BUILD_DIR}"/coreutils
+	cd "${BUILD_DIR}"/coreutils
+	"${COREUTILS_SRCDIR}"/configure \
+		--host="${CLFS_TARGET}" \
+		--prefix="${SYSROOT}"/usr \
+		--bindir="${SYSROOT}"/bin || return 1
+	make -j"${JOBS}" || return 1
+	make install
 }
 
 # can pass building in some machine.. to use busybox instead?
+# I'm not using busybox, let's see if this works for me.
 build_iproute2() {
-  if [ ! -d $TOPDIR/source/iproute2-4.9.0 ]; then
-    tar -xf $TOPDIR/tarball/iproute2-4.9.0.tar.xz -C $TOPDIR/source
-  fi
-
-  pushd $TOPDIR/source/iproute2-4.9.0
-    # for cross compiling
-    sed -i 's/^CC :=.*$/CC := aarch64-linux-gnu-gcc/;s/^HOSTCC ?=.*$/HOSTCC ?= gcc/' Makefile || return 1
-    make -j${JOBS} || return 1
-    # can't use make install
-    cp -v ip/ip bridge/bridge misc/{lnstat,ss} tc/tc $SYSROOT/sbin/
-  popd
+	cd "${IPROUTE2_SRCDIR}"
+	# for cross compiling
+	sed -i 's/^CC :=.*$/CC := aarch64-linux-gnu-gcc/;s/^HOSTCC ?=.*$/HOSTCC ?= gcc/' Makefile || return 1
+	make -j"${JOBS}" || return 1
+	# can't use make install
+	cp -v ip/ip bridge/bridge misc/{lnstat,ss} tc/tc "${SYSROOT}"/sbin/
 }
 
 # can pass building, maybe will add this later..
+# Does it work or not?
 build_nettools() {
-  if [ ! -d $TOPDIR/source/net-tools-1.60 ]; then
-    tar -xf $TOPDIR/tarball/net-tools-1.60.tar.bz2 -C $TOPDIR/source
-  fi
-
-  pushd $TOPDIR/source/net-tools-1.60
-    CC=aarch64-linux-gnu-gcc make
-  popd
+	cd "${NET_TOOLS_SRCDIR}"
+	CC="${CROSS_COMPILE}"-gcc make
 }
 
 build_find() {
-  if [ ! -d $TOPDIR/source/findutils-4.6.0 ]; then
-    tar -xzf $TOPDIR/tarball/findutils-4.6.0.tar.gz -C $TOPDIR/source
-  fi
-  mkdir -p $TOPDIR/build/find
-  pushd $TOPDIR/build/find
-    echo "gl_cv_func_wcwidth_works=yes" > config.cache
-    echo "ac_cv_func_fnmatch_gnu=yes" >> config.cache
-    $TOPDIR/source/findutils-4.6.0/configure \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr/ \
-      --bindir=$SYSROOT/bin \
-      --cache-file=config.cache || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	mkdir -p "${BUILD_DIR}"/find
+	cd "${BUILD_DIR}"/find
+	printf "gl_cv_func_wcwidth_works=yes" > config.cache
+	printf "ac_cv_func_fnmatch_gnu=yes" >> config.cache
+	"${FINDUTILS_SRCDIR}"/configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr/ \
+	--bindir="${SYSROOT}"/bin \
+	--cache-file=config.cache || return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
 build_grep() {
-  if [ ! -d $TOPDIR/source/grep-2.23 ]; then
-    tar -xf $TOPDIR/tarball/grep-2.23.tar.xz -C $TOPDIR/source
-  fi
-  mkdir -p $TOPDIR/build/grep
-  pushd $TOPDIR/build/grep
-    $TOPDIR/source/grep-2.23/configure \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr \
-      --bindir=$SYSROOT/bin \
-      || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	mkdir -p "${BUILD_DIR}"/grep
+	cd "${BUILD_DIR}"/grep
+	"${GREP_SRCDIR}"/configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr \
+	--bindir="${SYSROOT}"/bin \
+	|| return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
-# for building util-linux
 build_ncurses() {
-  if [ ! -d $TOPDIR/source/ncurses-6.0 ]; then
-      tar -xzf $TOPDIR/tarball/ncurses-6.0.tar.gz -C $TOPDIR/source
-  fi
-  mkdir -p $TOPDIR/build/ncurses
-  pushd $TOPDIR/build/ncurses
-    AWK=gawk $TOPDIR/source/ncurses-6.0/configure \
-      --build=$CLFS_HOST \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr \
-      --libdir=$SYSROOT/usr/lib64 \
-      --with-terminfo-dirs=/usr/lib/terminfo \
-      --with-termlib=tinfo \
-      --without-ada \
-      --without-debug \
-      --enable-overwrite \
-      --enable-widec \
-      --with-build-cc=gcc \
-      --with-shared || return 1
-    make -j${JOBS} || return 1
-    make install
-    cd $SYSROOT/usr/lib64
-    ln -sf libncursesw.so.6.0 libncurses.so
+	mkdir -p "${BUILD_DIR}"/ncurses
+	cd "${BUILD_DIR}"/ncurses
+	AWK="gawk" "${NCURSES_SRCDIR}"/configure \
+	--build="${CLFS_HOST}" \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr \
+	--libdir="${SYSROOT}"/usr/lib64 \
+	--with-terminfo-dirs=/usr/lib/terminfo \
+	--with-termlib=tinfo \
+	--without-ada \
+	--without-debug \
+	--enable-overwrite \
+	--enable-widec \
+	--with-build-cc=gcc \
+	--with-shared || return 1
+	make -j"${JOBS}" || return 1
+	make install
+	cd "${SYSROOT}"/usr/lib64
+	ln -sf libncursesw.so.6.0 libncurses.so
 # if without --enable-widec
-#    ln -sf libmenu.so.6.0 libmenu.so
-#    ln -sf libpanel.so.6.0 libpanel.so
-#    ln -sf libform.so.6 libform.so
-    ln -sf libtinfo.so.6.0 libtinfo.so
-  popd
+#	ln -sf libmenu.so.6.0 libmenu.so
+#	ln -sf libpanel.so.6.0 libpanel.so
+#	ln -sf libform.so.6 libform.so
+	ln -sf libtinfo.so.6.0 libtinfo.so
 }
 
 # for building gcc
 build_zlib() {
-  if [ ! -d $TOPDIR/source/zlib-1.2.11 ]; then
-    tar -xzf $TOPDIR/tarball/zlib-1.2.11.tar.gz -C $TOPDIR/source
-  fi
-
-  pushd $TOPDIR/source/zlib-1.2.11
-  $TOPDIR/source/zlib-1.2.11/configure \
-      --prefix=$SYSROOT/usr/ \
-      --libdir=$SYSROOT/usr/lib64 \
-    || return 1
-    make -j${JOBS} || return 1
-    make install
-  popd
+	cd "${ZLIB_SRCDIR}"
+	./configure \
+	--prefix="${SYSROOT}"/usr/ \
+	--libdir="${SYSROOT}"/usr/lib64 || return 1
+	make -j"${JOBS}" || return 1
+	make install
 }
 
 build_pam() {
-  if [ ! -d $TOPDIR/source/Linux-PAM-1.3.0 ]; then
-    tar -xzf $TOPDIR/tarball/Linux-PAM-1.3.0.tar.gz -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/Linux-PAM-1.3.0/
-    ./configure --host=$CLFS_TARGET \
-    --with-sysroot=$SYSROOT \
-    --prefix=$SYSROOT/usr \
-    --disable-nis \
-    --libdir=$SYSROOT/usr/lib64 || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-    mkdir -p $SYSROOT/usr/include/security
-    cd $SYSROOT/usr/include/security
-    for i in $(ls ../{pam*,_pam*}); do ln -sf $i; done
-  popd
+	cd "${PAM_SRCDIR}"
+	./configure \
+	--host="${CLFS_TARGET}" \
+	--with-sysroot="${SYSROOT}" \
+	--prefix="${SYSROOT}"/usr \
+	--disable-nis \
+	--libdir="${SYSROOT}"/usr/lib64 || return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
+	mkdir -p "${SYSROOT}"/usr/include/security
+	cd "${SYSROOT}"/usr/include/security
+	for i in $(ls ../{pam*,_pam*}); do ln -sf $i; done
 }
 
 build_util_linux() {
-  if [ ! -d $TOPDIR/source/util-linux-2.29.2 ]; then
-    tar -xf $TOPDIR/tarball/util-linux-2.29.2.tar.xz -C $TOPDIR/source/
-  fi
-
-  mkdir -p $TOPDIR/build/util-linux
-  pushd $TOPDIR/build/util-linux
-    $TOPDIR/source/util-linux-2.29.2/configure \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/ \
-      --includedir=$SYSROOT/usr/include/ \
-      --datarootdir=$SYSROOT/usr/share \
-      --with-bashcompletiondir=$SYSROOT/usr/share/bash-completion/completions \
-      --without-python \
-      --disable-wall \
-      --disable-eject \
-      || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	cd "${UTIL_LINUX_SRCDIR}"
+	./configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/ \
+	--includedir="${SYSROOT}"/usr/include/ \
+	--datarootdir="${SYSROOT}"/usr/share \
+	--with-bashcompletiondir="${SYSROOT}"/usr/share/bash-completion/completions \
+	--without-python \
+	--disable-wall \
+	--disable-eject || return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
-build_openssl() {
-  if [ ! -d $TOPDIR/source/openssl-1.0.2l ]; then
-    tar -xf $TOPDIR/tarball/openssl-1.0.2l.tar.gz -C $TOPDIR/source/
-  fi
-
-  pushd $TOPDIR/source/openssl-1.0.2l
-    CC=gcc AR="ar r" RANLIB=ranlib $TOPDIR/source/openssl-1.0.2l/Configure dist no-shared \
-      --prefix=$SYSROOT/usr/ \
-      || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-}
-
-build_openssh() {
-  if [ ! -d $TOPDIR/source/openssh-portable-V_7_5_P1 ]; then
-    tar -xf $TOPDIR/tarball/V_7_5_P1.tar.gz -C $TOPDIR/source/
-  fi
-
-  pushd $TOPDIR/source/openssh-portable-V_7_5_P1
-    autoreconf
-    LD=${CROSS_COMPILE}gcc STRIP=${CROSS_COMPILE}strip $TOPDIR/source/openssh-portable-V_7_5_P1/configure \
-      --host=$CLFS_TARGET \
-      --prefix=$SYSROOT/usr/ \
-      --exec-prefix=$SYSROOT/usr \
-      --sysconfdir=$SYSROOT/etc/ssh \
-      --with-zlib=$SYSROOT/usr/lib64 \
-      --with-privsep-path=$SYSROOT/var/empty \
-      --with-libs \
-      --disable-etc-default-login \
-      --without-openssl \
-      || return 1
-    sed -i '/^STRIP_OPT.*/d;/^install\>:/s/ host-key check-config//' Makefile
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-}
+# TODO: Not tested
+#build_libressl() {
+#	cd "${LIBRESSL_SRCDIR}"
+#	CC=gcc AR="ar r" RANLIB=ranlib "${LIBRESSL_SRCDIR}"/Configure dist no-shared \
+#	--prefix="${SYSROOT}"/usr/ || return 1
+#	make -j"${JOBS}" || return 1
+#	make install || return 1
+#}
 
 build_gzip() {
-  if [ ! -d $TOPDIR/source/gzip-1.6 ]; then
-    tar -xf $TOPDIR/tarball/gzip-1.6.tar.xz -C $TOPDIR/source
-  fi
-  mkdir -p $TOPDIR/build/gzip
-  pushd $TOPDIR/build/gzip
-    $TOPDIR/source/gzip-1.6/configure \
-    --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --bindir=$SYSROOT/bin \
-    || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	cd "${GZIP_SRCDIR}"
+	./configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr \
+	--bindir="${SYSROOT}"/bin || return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
 build_sed() {
-  if [ ! -d $TOPDIR/source/sed-4.2.2 ]; then
-    tar -xjf $TOPDIR/tarball/sed-4.2.2.tar.bz2 -C $TOPDIR/source
-  fi
-  mkdir -p $TOPDIR/build/sed
-  pushd $TOPDIR/build/sed
-    $TOPDIR/source/sed-4.2.2/configure \
-    --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --bindir=$SYSROOT/bin \
-    || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	mkdir -p "${BUILD_DIR}"/sed
+	cd "${BUILD_DIR}"/sed
+	"${SED_SRCDIR}"/configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr \
+	--bindir="${SYSROOT}"/bin || return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
 build_awk() {
-  if [ ! -d $TOPDIR/source/gawk-4.1.3 ]; then
-    tar -xf $TOPDIR/tarball/gawk-4.1.3.tar.xz -C $TOPDIR/source
-  fi
-  mkdir -p $TOPDIR/build/awk
-  pushd $TOPDIR/build/awk
-    $TOPDIR/source/gawk-4.1.3/configure \
-    --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --bindir=$SYSROOT/bin \
-    || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	mkdir -p "${BUILD_DIR}"/awk
+	cd "${BUILD_DIR}"/awk
+	"${GAWK_SRCDIR}"/configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr \
+	--bindir="${SYSROOT}"/bin \
+	|| return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
-# sudo apt-get install autoconf2.13
-# sudo apt-get install autopoint
 build_shadow() {
-  if [ ! -d $TOPDIR/source/shadow-4.5 ]; then
-    tar -xf $TOPDIR/tarball/shadow-4.5.tar.xz -C $TOPDIR/source
-  fi
-
-  pushd $TOPDIR/source/shadow-4.5
-    autoreconf -v -f --install
-    echo 'shadow_cv_passwd_dir=${SYSROOT}/bin' > config.cache
-    ./configure \
-    --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --bindir=$SYSROOT/usr/bin/ \
-    --sbindir=$SYSROOT/usr/bin/ \
-    --sysconfdir=$SYSROOT/etc \
-    --enable-maintainer-mode \
-    --disable-nls \
-    --enable-subordinate-ids=no \
-    --cache-file=config.cache || return 1
-    make || return 1
-    make install
-  popd
+	cd "${SHADOW_SRCDIR}"
+	autoreconf -v -f --install
+	printf "shadow_cv_passwd_dir=%s" "${CLFS}/bin" > config.cache
+	./configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr \
+	--bindir="${SYSROOT}"/usr/bin/ \
+	--sbindir="${SYSROOT}"/usr/bin/ \
+	--sysconfdir="${SYSROOT}"/etc \
+	--enable-maintainer-mode \
+	--disable-nls \
+	--enable-subordinate-ids=no \
+	--cache-file=config.cache || return 1
+	make || return 1
+	make install
 }
 
 build_procps() {
-  if [ ! -d $TOPDIR/source/procps-ng-3.3.12 ]; then
-    tar -xf $TOPDIR/tarball/procps-ng-3.3.12.tar.xz -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/procps-ng-3.3.12
-    sed -i '/^AC_FUNC_MALLOC$/d;/^AC_FUNC_REALLOC$/d' configure.ac
-    $TOPDIR/source/procps-ng-3.3.12/configure \
-    --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --libdir=$SYSROOT/usr/lib64 \
-    || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	cd "${PROCPS_SRCDIR}"
+	# ?
+	sed -i '/^AC_FUNC_MALLOC$/d;/^AC_FUNC_REALLOC$/d' configure.ac
+	./configure \
+	--host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/usr \
+	--libdir="${SYSROOT}"/usr/lib64 \
+	|| return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
 build_eudev() {
-  if [ ! -d $TOPDIR/source/eudev-1.7 ]; then
-    tar -xzf $TOPDIR/tarball/eudev-1.7.tar.gz -C $TOPDIR/source
-    sed -i '1i\#include <stdint.h>' $TOPDIR/source/eudev-1.7/src/mtd_probe/mtd_probe.h
-  fi
-  mkdir -p $TOPDIR/build/eudev
-  pushd $TOPDIR/build/eudev
-    $TOPDIR/source/eudev-1.7/configure --host=$CLFS_TARGET \
-	--prefix=$SYSROOT/ \
-        --includedir=$SYSROOT/usr/include/ \
-        --datarootdir=$SYSROOT/usr/share \
-	--bindir=$SYSROOT/sbin/ \
-	--sbindir=$SYSROOT/sbin/ \
-        --disable-introspection \
-        --disable-gtk-doc-html \
-        --disable-gudev \
-        --disable-keymap || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
+	mkdir -p "${BUILD_DIR}"/eudev
+	cd "${BUILD_DIR}"/eudev
+	"${EUDEV_SRCDIR}"/configure --host="${CLFS_TARGET}" \
+	--prefix="${SYSROOT}"/ \
+	--includedir="${SYSROOT}"/usr/include/ \
+	--datarootdir="${SYSROOT}"/usr/share \
+	--bindir="${SYSROOT}"/sbin/ \
+	--sbindir="${SYSROOT}"/sbin/ \
+	--disable-introspection \
+	--disable-gtk-doc-html \
+	--disable-gudev \
+	--disable-keymap || return 1
+	make -j"${JOBS}" || return 1
+	make install || return 1
 }
 
-build_sysvinit() {
-  if [ ! -d $TOPDIR/source/sysvinit-2.88dsf ]; then
-    tar -xjf $TOPDIR/tarball/sysvinit-2.88dsf.tar.bz2 -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/sysvinit-2.88dsf
-    make CC=${CROSS_COMPILE}gcc LDFLAGS=-lcrypt -j${JOBS} || return 1
-    cp -v src/{init,halt,shutdown,runlevel,killall5,fstab-decode,sulogin,bootlogd} $SYSROOT/sbin/
-    cp -v src/mountpoint $SYSROOT/bin/
-    cp -v src/{last,mesg,utmpdump,wall} $SYSROOT/usr/bin/
-  popd
-}
-
-build_kbd() {
-  if [ ! -d $TOPDIR/source/kbd-2.0.4 ]; then
-    tar -xf $TOPDIR/tarball/kbd-2.0.4.tar.xz -C $TOPDIR/source
-    # fix cross-compiled setfont can't find font file issue
-    sed -i 's:DATADIR:"/lib/kbd":g' $TOPDIR/source/kbd-2.0.4/src/*.c
-  fi
-  mkdir -p $TOPDIR/build/kbd
-  pushd $TOPDIR/build/kbd
-    PKG_CONFIG_LIBDIR=$SYSROOT/usr/lib64/pkgconfig \
-    CPPFLAGS="-I$SYSROOT/usr/include" \
-    $TOPDIR/source/kbd-2.0.4/configure \
-    --host=$CLFS_TARGET \
-    --prefix=$SYSROOT/usr \
-    --bindir=$SYSROOT/bin \
-    --datadir=$SYSROOT/lib/kbd \
-    || return 1
-    make -j${JOBS} || return 1
-    make install || return 1
-  popd
-}
-
-build_bootscript() {
-  if [ ! -d $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710 ]; then
-    tar -xf $TOPDIR/tarball/bootscripts-cross-lfs-3.0-20140710.tar.xz -C $TOPDIR/source
-  fi
-  pushd $TOPDIR/source/bootscripts-cross-lfs-3.0-20140710
-    DESTDIR=$SYSROOT make install-bootscripts
-    ## HACK! ##
-    sed -i '20i\ldconfig' $SYSROOT/etc/rc.d/init.d/rc
-    sed -i '$i\bash' $SYSROOT/etc/rc.d/init.d/rc
-    cp -va $TOPDIR/configs/etc/* $SYSROOT/etc/
-  popd
-}
+# Changing this (TODO)
+#build_sysvinit() {
+#	cd "${SYSVINIT_SRCDIR}"
+#	make CC=${CROSS_COMPILE}gcc LDFLAGS=-lcrypt -j"${JOBS}" || return 1
+#	cp -v src/{init,halt,shutdown,runlevel,killall5,fstab-decode,sulogin,bootlogd} "${SYSROOT}"/sbin/
+#	cp -v src/mountpoint "${SYSROOT}"/bin/
+#	cp -v src/{last,mesg,utmpdump,wall} "${SYSROOT}"/usr/bin/
+#}
 
 do_strip () {
-  for i in $(find $SYSTEM/); do
-  echo $i
-    test -f $i && file $i | grep ELF &>/dev/null
-    if [ $? -eq 0 ]; then
-      ${CROSS_COMPILE}strip --strip-unneeded $i
-    fi
-  done
+	for i in $(find "${SYSTEM}"/); do
+	echo "${i}"
+	test -f "${i}" && file "${i}" | grep ELF &>/dev/null
+	if [ $? -eq 0 ]; then
+		"${CROSS_COMPILE}"strip --strip-unneeded "${i}"
+	fi
+	done
 }
 
-pack_ramdisk() {
-  pushd $SYSTEM
-    sudo mknod $SYSTEM/dev/console c 5 1 # initrd must provide /dev/console
-    find . | cpio -ovHnewc | gzip > ../root.cpio.gz
-  popd
-}
+prep_dirs
 
-# new_disk <disk name> <size>
-new_disk() {
-  size=$(expr $2 \* 1048576)
-  qemu-img create -f raw $1 $size
-  yes | /sbin/mkfs.ext4 $1
-  sudo mount $1 /mnt
-  sudo cp -rf $SYSTEM/* /mnt/ &> /dev/null
-  sudo umount /mnt
-}
+fetch_sources
+
+unpack_sources
+
+build_toolchain

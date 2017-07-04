@@ -1,5 +1,1 @@
-
-- fix tty bugs, (set -o vi, k,j doesn't work well)
-- add sshd
-- enable kdump, so can use crash to debug.
-
+- Massive Clean-up and complete rewrite
