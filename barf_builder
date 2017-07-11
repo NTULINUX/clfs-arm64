@@ -274,7 +274,7 @@ else
 		printf "\\tError detecting git version.%s" "${REPORT_BUG_EXIT}"
 	fi
 
-# Only x86/amd64 are supported because 
+# Only x86/amd64 are supported
 	printf "\\n\\tDetecting kernel bitness...\\n"
 	unset ARCH_UNAME
 	ARCH_UNAME=$(uname -m)
@@ -394,6 +394,7 @@ unset LDFLAGS
 # Reduce bandwidth, speed up the cloning process
 CROSSTOOL_GIT_OPTS=(--depth"="1 -b "${CROSSTOOL_GIT_BRANCH}" --single-branch)
 
+# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
 LINUX_VER="4.9.35"
 LINUX_MAJOR_VER="v4.x"
 GCC_VER="6.3.0"
@@ -422,12 +423,58 @@ SYSVINIT_VER="2.88dsf"
 EUDEV_VER="3.2.2"
 PROCPS_VER="3.3.12"
 LIBRESSL_VER="2.5.4"
-# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils
 IPROUTE2_VER="4.11.0"
 NET_TOOLS_VER="1.60"
 TAR_VER="1.29"
 
+# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
+LINUX_LOC="https://cdn.kernel.org/pub/linux/kernel/${LINUX_MAJOR_VER}/linux-${LINUX_VER}.tar.xz"
+GCC_LOC="ftp://ftp.gnu.org/gnu/gcc/gcc-${GCC_VER}/gcc-${GCC_VER}.tar.bz2"
+MPFR_LOC="https://ftp.gnu.org/gnu/mpfr/mpfr-${MPFR_VER}.tar.xz"
+MPC_LOC="http://ftp.gnu.org/gnu/mpc/mpc-${MPC_VER}.tar.gz"
+GMP_LOC="https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VER}.tar.xz"
+GLIBC_LOC="https://ftp.gnu.org/gnu/libc/glibc-${GLIBC_VER}.tar.bz2"
+GPERF_LOC="https://ftp.gnu.org/gnu/gperf/gperf-${GPERF_VER}.tar.gz"
+BASH_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}.tar.gz"
+BASH_001_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-001"
+BASH_002_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-002"
+BASH_003_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-003"
+BASH_004_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-004"
+BASH_005_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-005"
+BASH_006_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-006"
+BASH_007_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-007"
+BASH_008_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-008"
+BASH_009_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-009"
+BASH_010_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-010"
+BASH_011_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-011"
+BASH_012_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-012"
+BINUTILS_LOC="https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VER}.tar.bz2"
+NCURSES_LOC="http://ftp.gnu.org/gnu/ncurses/ncurses-${NCURSES_VER}.tar.gz"
+ZLIB_LOC="https://www.zlib.net/zlib-${ZLIB_VER}.tar.gz"
+COREUTILS_LOC="http://ftp.gnu.org/gnu/coreutils/coreutils-${COREUTILS_VER}.tar.xz"
+UTIL_LINUX_LOC="https://www.kernel.org/pub/linux/utils/util-linux/v${UTIL_LINUX_VER}/util-linux-${UTIL_LINUX_VER}.tar.xz"
+FINUTILS_LOC="http://ftp.gnu.org/gnu/findutils/findutils-${FINDUTILS_VER}.tar.gz"
+GREP_LOC="http://ftp.gnu.org/gnu/grep/grep-${GREP_VER}.tar.xz"
+GZIP_LOC="http://ftp.gnu.org/gnu/gzip/gzip-${GZIP_VER}.tar.xz"
+SED_LOC="http://ftp.gnu.org/gnu/sed/sed-${SED_VER}.tar.xz"
+GAWK_LOC="http://ftp.gnu.org/gnu/gawk/gawk-${GAWK_VER}.tar.xz"
+PAM_LOC="http://www.linux-pam.org/library/Linux-PAM-${PAM_VER}.tar.gz"
+SHADOW_LOC="https://github.com/shadow-maint/shadow/releases/download/${SHADOW_VER}/shadow-${SHADOW_VER}.tar.xz"
+OPENRC_LOC="https://github.com/OpenRC/openrc/archive/${OPENRC_VER}.tar.gz"
+SYSVINIT_LOC="http://download.savannah.gnu.org/releases/sysvinit/sysvinit-${SYSVINIT_VER}.tar.bz2"
+EUDEV_LOC="https://github.com/gentoo/eudev/archive/v${EUDEV_VER}.tar.gz"
+PROCPS_LOC="https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-${PROCPS_VER}.tar.xz"
+LIBRESSL_LOC="https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-${LIBRESSL_VER}.tar.gz"
+IPROUTE2_LOC="https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-${IPROUTE2_VER}.tar.xz"
+NET_TOOLS_LOC="https://downloads.sourceforge.net/project/net-tools/net-tools-${NET_TOOLS_VER}.tar.bz2"
+TAR_LOC="http://ftp.gnu.org/gnu/tar/tar-${TAR_VER}.tar.xz"
+
+# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
 LINUX_COMP="${TARDIR}/linux-${LINUX_VER}.tar.xz"
+GCC_SRCDIR="${SRCDIR}/gcc-${GCC_VER}"
+MPFR_SRCDIR="${SRCDIR}/mpfr-${MPFR_VER}"
+MPC_SRCDIR="${SRCDIR}/mpc-${MPC_VER}"
+GMP_SRCDIR="${SRCDIR}/gmp-${GMP_VER}"
 GLIBC_COMP="${TARDIR}/glibc-${GLIBC_VER}.tar.bz2"
 GPERF_COMP="${TARDIR}/gperf-${GPERF_VER}.tar.gz"
 BASH_COMP="${TARDIR}/bash-${BASH_VER}.tar.gz"
@@ -449,57 +496,38 @@ EUDEV_COMP="${TARDIR}/v${EUDEV_VER}.tar.gz"
 PROCPS_COMP="${TARDIR}/procps-ng-${PROCPS_VER}.tar.xz"
 LIBRESSL_COMP="${TARDIR}/libressl-${LIBRESSL_VER}.tar.gz"
 IPROUTE2_COMP="${TARDIR}/iproute2-${IPROUTE2_VER}.tar.xz"
-# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils
 NET_TOOLS_COMP="${TARDIR}/net-tools-${NET_TOOLS_VER}.tar.bz2"
 TAR_COMP="${TARDIR}/tar-${TAR_VER}.tar.xz"
 
-# TODO: Convert array to variables
-# PKGNAME_LOC (LOC = location)
-SOURCES=("https://cdn.kernel.org/pub/linux/kernel/${LINUX_MAJOR_VER}/linux-${LINUX_VER}.tar.xz"
-	"ftp://ftp.gnu.org/gnu/gcc/gcc-${GCC_VER}/gcc-${GCC_VER}.tar.bz2"
-	"https://ftp.gnu.org/gnu/mpfr/mpfr-${MPFR_VER}.tar.xz"
-	"http://ftp.gnu.org/gnu/mpc/mpc-${MPC_VER}.tar.gz"
-	"https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VER}.tar.xz"
-	"https://ftp.gnu.org/gnu/libc/glibc-${GLIBC_VER}.tar.bz2"
-	"https://ftp.gnu.org/gnu/gperf/gperf-${GPERF_VER}.tar.gz"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}.tar.gz"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-001"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-002"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-003"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-004"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-005"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-006"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-007"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-008"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-009"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-010"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-011"
-	"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-012"
-	"https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VER}.tar.bz2"
-	"http://ftp.gnu.org/gnu/ncurses/ncurses-${NCURSES_VER}.tar.gz"
-	"https://www.zlib.net/zlib-${ZLIB_VER}.tar.gz"
-	"http://ftp.gnu.org/gnu/coreutils/coreutils-${COREUTILS_VER}.tar.xz"
-	"https://www.kernel.org/pub/linux/utils/util-linux/v${UTIL_LINUX_VER}/util-linux-${UTIL_LINUX_VER}.tar.xz"
-	"http://ftp.gnu.org/gnu/findutils/findutils-${FINDUTILS_VER}.tar.gz"
-	"http://ftp.gnu.org/gnu/grep/grep-${GREP_VER}.tar.xz"
-	"http://ftp.gnu.org/gnu/gzip/gzip-${GZIP_VER}.tar.xz"
-	"http://ftp.gnu.org/gnu/sed/sed-${SED_VER}.tar.xz"
-	"http://ftp.gnu.org/gnu/gawk/gawk-${GAWK_VER}.tar.xz"
-	"http://www.linux-pam.org/library/Linux-PAM-${PAM_VER}.tar.gz"
-	"https://github.com/shadow-maint/shadow/releases/download/${SHADOW_VER}/shadow-${SHADOW_VER}.tar.xz"
-	"https://github.com/OpenRC/openrc/archive/${OPENRC_VER}.tar.gz"
-	"http://download.savannah.gnu.org/releases/sysvinit/sysvinit-${SYSVINIT_VER}.tar.bz2"
-	"https://github.com/gentoo/eudev/archive/v${EUDEV_VER}.tar.gz"
-	"https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-${PROCPS_VER}.tar.xz"
-	# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils
-	"https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-${LIBRESSL_VER}.tar.gz"
-	"https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-${IPROUTE2_VER}.tar.xz"
-	"https://downloads.sourceforge.net/project/net-tools/net-tools-${NET_TOOLS_VER}.tar.bz2"
-	"http://ftp.gnu.org/gnu/tar/tar-${TAR_VER}.tar.xz")
-
-# TODO (if any)
-# Move Bash patches here?
-# PATCHES=("")
+# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
+LINUX_SRCDIR="${SRCDIR}/linux-${LINUX_VER}"
+GCC_SRCDIR="${SRCDIR}/gcc-${GCC_VER}"
+MPFR_SRCDIR="${SRCDIR}/mpfr-${MPFR_VER}"
+MPC_SRCDIR="${SRCDIR}/mpc-${MPC_VER}"
+GMP_SRCDIR="${SRCDIR}/gmp-${GMP_VER}"
+GLIBC_SRCDIR="${SRCDIR}/glibc-${GLIBC_VER}"
+GPERF_SRCDIR="${SRCDIR}/gperf-${GPERF_VER}"
+BASH_SRCDIR="${SRCDIR}/bash-${BASH_VER}_${BASH_PATCHLEVEL}"
+BINUTILS_SRCDIR="${SRCDIR}/binutils-${BINUTILS_VER}"
+NCURSES_SRCDIR="${SRCDIR}/ncurses-${NCURSES_VER}"
+ZLIB_SRCDIR="${SRCDIR}/zlib-${ZLIB_VER}"
+COREUTILS_SRCDIR="${SRCDIR}/coreutils-${COREUTILS_VER}"
+UTIL_LINUX_SRCDIR="${SRCDIR}/util-linux-${UTIL_LINUX_VER}"
+FINDUTILS_SRCDIR="${SRCDIR}/findutils-${FINDUTILS_VER}"
+GREP_SRCDIR="${SRCDIR}/grep-${GREP_VER}"
+GZIP_SRCDIR="${SRCDIR}/gzip-${GZIP_VER}"
+SED_SRCDIR="${SRCDIR}/sed-${SED_VER}"
+GAWK_SRCDIR="${SRCDIR}/gawk-${GAWK_VER}"
+PAM_SRCDIR="${SRCDIR}/pam-${PAM_VER}"
+SHADOW_SRCDIR="${SRCDIR}/shadow-${SHADOW_VER}"
+OPENRC_SRCDIR="${SRCDIR}/openrc-${OPENRC_VER}"
+SYSVINIT_SRCDIR="${SRCDIR}/sysvinit-${SYSVINIT_VER}"
+EUDEV_SRCDIR="${SRCDIR}/eudev-${EUDEV_VER}"
+PROCPS_SRCDIR="${SRCDIR}/procps-${PROCPS_VER}"
+LIBRESSL_SRCDIR="${SRCDIR}/libressl-${LIBRESSL_VER}"
+IPROUTE2_SRCDIR="${SRCDIR}/iproute2-${IPROUTE2_VER}"
+NET_TOOLS_SRCDIR="${SRCDIR}/net-tools-${NET_TOOLS_VER}"
+TAR_SRCDIR="${SRCDIR}/tar-${TAR_VER}"
 
 #
 # Fetch any required sources
@@ -533,8 +561,7 @@ if [[ ! -f "${LINUX_COMP}" ]] ; then
 	}
 fi
 
-	# TODO: Add the rest of the sources to possibly fetch
-	# following the syntax above
+	# TODO: Add remaining sources to possibly fetch
 }
 
 #
@@ -545,34 +572,205 @@ fi
 # Unpack any required sources
 #
 
-prepare_sources ()
+# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
+unpack_sources ()
 {
 	printf "\\tUnpacking any sources if needed...\\n"
 
 if [[ ! -d "${LINUX_SRCDIR}" ]] ; then
-	printf "\\n\\tDecompressing Linux sources...\\n"
-	tar xf "${BARF_SRCDIR}"/linux-"${LINUX_VER}".tar.xz -C "${BARF_SRCDIR}"/
+	tar xf "${LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${LINUX_COMP}" ; exit 1 ;
+	}
 fi
 
-if [[ ! -d "${GMP_SRCDIR}" ]] ; then
-	printf "\\n\\tDecompressing GMP...\\n"
-	tar xf "${BARF_SRCDIR}"/gmp-"${GMP_VER}".tar.xz -C "${BARF_SRCDIR}"/
-	mv -v "${BARF_SRCDIR}"/gmp-"${GMP_VER}" "${GMP_SRCDIR}"
+if [[ ! -d "${GCC_SRCDIR}" ]] ; then
+	tar xf "${GCC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${GCC_COMP}" ; exit 1 ;
+	}
 fi
 
 if [[ ! -d "${MPFR_SRCDIR}" ]] ; then
-	printf "\\n\\tDecompressing MPFR...\\n"
-	tar xf "${BARF_SRCDIR}"/mpfr-"${MPFR_VER}".tar.xz -C "${BARF_SRCDIR}"/
-	mv -v "${BARF_SRCDIR}"/mpfr-"${MPFR_VER}" "${MPFR_SRCDIR}"
+	tar xf "${MPFR_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${MPFR_COMP}" ; exit 1 ;
+	}
 fi
+
 
 if [[ ! -d "${MPC_SRCDIR}" ]] ; then
-	printf "\\n\\tDecompressing MPC...\\n"
-	tar zxf "${BARF_SRCDIR}"/mpc-"${MPC_VER}".tar.gz -C "${BARF_SRCDIR}"/
-	mv -v "${BARF_SRCDIR}"/mpc-"${MPC_VER}" "${MPC_SRCDIR}"
+	tar xf "${MPC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${MPC_COMP}" ; exit 1 ;
+	}
 fi
 
-	# TODO: Add the rest of the sources to possibly unpack
+if [[ ! -d "${GMP_SRCDIR}" ]] ; then
+	tar xf "${GMP_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${GMP_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GLIBC_SRCDIR}" ]] ; then
+	tar xf "${GLIBC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${GLIBC_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GPERF_SRCDIR}" ]] ; then
+	tar xf "${GPERF_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${GPERF_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BASH_SRCDIR}" ]] ; then
+	tar xf "${BASH_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${BASH_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BINUTILS_SRCDIR}" ]] ; then
+	tar xf "${BINUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${BINUTILS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${NCURSES_SRCDIR}" ]] ; then
+	tar xf "${NCURSES_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${NCURSES_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${ZLIB_SRCDIR}" ]] ; then
+	tar xf "${ZLIB_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${ZLIB_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${COREUTILS_SRCDIR}" ]] ; then
+	tar xf "${COREUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${COREUTILS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${UTIL_LINUX_SRCDIR}" ]] ; then
+	tar xf "${UTIL_LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${UTIL_LINUX_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${FINDUTILS_SRCDIR}" ]] ; then
+	tar xf "${FINDUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${FINDUTILS_TARDIR}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GREP_SRCDIR}" ]] ; then
+	tar xf "${GREP_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${GREP_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GZIP_SRCDIR}" ]] ; then
+	tar xf "${GZIP_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${GZIP_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${SED_SRCDIR}" ]] ; then
+	tar xf "${SED_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${SED_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GAWK_SRCDIR}" ]] ; then
+	tar xf "${GAWK_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${GAWK_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${PAM_SRCDIR}" ]] ; then
+	tar xf "${PAM_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${PAM_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${SHADOW_SRCDIR}" ]] ; then
+	tar xf "${SHADOW_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${SHADOW_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${SYSVINIT_SRCDIR}" ]] ; then
+	tar xf "${SYSVINIT_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${SYSVINIT_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${EUDEV_SRCDIR}" ]] ; then
+	tar xf "${EUDEV_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${EUDEV_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${PROCPS_SRCDIR}" ]] ; then
+	tar xf "${PROCPS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${PROCPS_COMP}" ; exit 1 ;
+	}
+fi
+
+	# TODO:
+	# OpenRC
+
+if [[ ! -d "${LIBRESSL_SRCDIR}" ]] ; then
+	tar xf "${LIBRESSL_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${LIBRESSL_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${IPROUTE2_SRCDIR}" ]] ; then
+	tar xf "${IPROUTE2_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${IPROUTE2_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${NET_TOOLS_SRCDIR}" ]] ; then
+	tar xf "${NET_TOOLS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${NET_TOOLS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${TAR_SRCDIR}" ]] ; then
+	tar xf "${TAR_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\tError decompressing %s. Exiting.\n" "${TAR_COMP}" ; exit 1 ;
+	}
+fi
+
+	# TODO: Add remaining sources to possibly unpack
 }
 
 #
@@ -628,12 +826,21 @@ verify_sources ()
 		printf "\\tUnexpected error: %s cannot be found.%s" \
 		"${GCC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
-	# TODO: Add the rest of the sources to verify
+	# TODO: Add remaining sources to verify_sources
 	printf "\\tAll sources verified.\\n"
 }
 
 #
 # End of verify sources
+#
+
+#
+# Prepare sources (rename source directories, apply patches, etc)
+#
+
+prepare_sources ()
+{
+	# TODO: Bash p12
 
 # TODO:
 update_crosstool ()
@@ -692,7 +899,7 @@ main ()
 	fetch_sources
 
 	# TODO
-	prepare_sources
+	unpack_sources
 
 	# TODO
 	verify_sources
