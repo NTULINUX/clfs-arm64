@@ -15,7 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO: Pretty much everything
+# TODO:
+# Add fetching / unpacking / verification of all packages
+# Build Crosstool-NG
+# Compile root filesystem
 
 # printf because this is now a C program
 printf "\\n\\tWelcome to NTU's Bootable ARM64 Root Filesystem (BARF) Builder!
@@ -62,16 +65,17 @@ user_defaults ()
 	unset BARF_PATCHDIR
 	unset CORES
 	unset CROSSTOOL_GIT_BRANCH
+	unset CROSSTOOL_SRCDIR
 	unset CROSSTOOL_BINDIR
 
-	BARF_CONFIG="${STARTDIR}/barf_builder.config"
-	BARF_SRCDIR="${STARTDIR}/barf-src"
-	BARF_ROOTFS="${STARTDIR}/barf/root"
-	BARF_PATCHDIR="${STARTDIR}/patches"
+	BARF_CONFIG="${STARTDIR}/barf.config"
+	BARF_SRCDIR="${STARTDIR}/barf/src"
+	BARF_ROOTFS="${STARTDIR}/barf/rootfs"
+	BARF_PATCHDIR="${STARTDIR}/barf/patches"
 	CORES=$(grep -c processor /proc/cpuinfo)
 	CROSSTOOL_GIT_BRANCH="master"
-	# TODO
-	# CROSSTOOL_BINDIR=""
+	CROSSTOOL_SRCDIR="${STARTDIR}/barf/crosstool-ng"
+	CROSSTOOL_BINDIR="${STARTDIR}/barf/cross-bin"
 }
 
 #
@@ -95,13 +99,11 @@ generate_config ()
 # All paths must be absolute! \\n
 CORES=%s\\n
 BARF_SRCDIR=%s
-BARF_ROOTDIR=%s
-BARF_PATCHDIR=%s\\n
-LINUX_VER=%s\\n
-GMP_VER=%s
-MPFR_VER=%s
-MPC_VER=%s\\n" "${CORES}" "${BARF_SRCDIR}" "${BARF_ROOTDIR}" "${BARF_PATCHDIR}" \
-"${LINUX_VER}" "${GMP_VER}" "${MPFR_VER}" "${MPC_VER}" &> "${BARF_CONFIG}"
+BARF_ROOTFS=%s
+BARF_PATCHDIR=%s
+CROSSTOOL_SRCDIR=%s
+CROSSTOOL_BINDIR=%s\\n" \
+ "${CORES}" "${BARF_SRCDIR}" "${BARF_ROOTFS}" "${BARF_PATCHDIR}" "${CROSSTOOL_SRCDIR}" "${CROSSTOOL_BINDIR}" &> "${BARF_CONFIG}"
 }
 
 #
@@ -327,7 +329,7 @@ fi
 	printf "\\n\\tPerforming basic sanity checks on %s.\\n" "${BARF_CONFIG}"
 	if [[ -f "${BARF_CONFIG}" && -r "${BARF_CONFIG}" ]] ; then
 		printf "\\t%s is a regular file and readable.\\n" "${BARF_CONFIG}"
-		if [[ -n "${BARF_ROOTDIR}" ]] ; then
+		if [[ -n "${BARF_ROOTFS}" ]] ; then
 			printf "\\tInstallation directory is defined.\\n"
 		else
 			printf "\\tInstallation directory is invalid or undefined. Exiting.\\n"
@@ -344,15 +346,15 @@ fi
 # End of sanity checks
 #
 
-# If complete toolchain already exists, do not clean
+# If Crosstool-NG is already built, do not clean
 # If interrupted, always do a fresh restart
-if [[ -d "${BARF_ROOTDIR}" && "${BARF_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
+if [[ -d "${CROSSTOOL_BINDIR}" && "${CROSSTOOL_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
 	printf "\\n\\t%s found.
-\\tToolchain build hung up unexpectedly.\\n
+\\tCrosstool-NG build hung up unexpectedly.\\n
 \\tDeleting %s in 10 seconds.\\n
 \\tThis action cannot be undone!
 \\tPress Control+C to cancel.
-\\t10.\\n" "${BARF_ROOTDIR}" "${BARF_ROOTDIR}"
+\\t10.\\n" "${CROSSTOOL_BINDIR}" "${CROSSTOOL_BINDIR}"
 	sleep 1
 	printf "\\t9.\\n"
 	sleep 1
@@ -373,14 +375,79 @@ if [[ -d "${BARF_ROOTDIR}" && "${BARF_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 
 	printf "\\t1.\\n"
 	sleep 1
 	printf "\\tCleaning up...\\n\\n"
-	rm -rf "${BARF_ROOTDIR}"
+	rm -rf "${CROSSTOOL_BINDIR}"
 	printf "\\tFinished. Please restart the script.\\n"
 	exit 0
-elif [[ -d "${BARF_ROOTDIR}" && "${BARF_COMPLETE}" == 1 ]] ; then
-	printf "\\n\\tToolchain already built.\\n
+elif [[ -d "${CROSSTOOL_BINDIR}" && "${CROSSTOOL_COMPLETE}" == 1 ]] ; then
+	printf "\\n\\tCrosstool-NG already built.\\n"
+fi
+
+# If Root filesystem is already built, do not clean
+# If interrupted, always do a fresh restart
+if [[ -d "${BARF_ROOTFS}" && "${BARF_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
+	printf "\\n\\t%s found.
+\\tRoot filesystem build hung up unexpectedly.\\n
+\\tDeleting %s in 10 seconds.\\n
+\\tThis action cannot be undone!
+\\tPress Control+C to cancel.
+\\t10.\\n" "${BARF_ROOTFS}" "${BARF_ROOTFS}"
+	sleep 1
+	printf "\\t9.\\n"
+	sleep 1
+	printf "\\t8.\\n"
+	sleep 1
+	printf "\\t7.\\n"
+	sleep 1
+	printf "\\t6.\\n"
+	sleep 1
+	printf "\\t5.\\n"
+	sleep 1
+	printf "\\t4.\\n"
+	sleep 1
+	printf "\\t3.\\n"
+	sleep 1
+	printf "\\t2.\\n"
+	sleep 1
+	printf "\\t1.\\n"
+	sleep 1
+	printf "\\tCleaning up...\\n\\n"
+	rm -rf "${BARF_ROOTFS}"
+	printf "\\tFinished. Please restart the script.\\n"
+	exit 0
+elif [[ -d "${BARF_ROOTFS}" && "${ROOTFS_COMPLETE}" == 1 ]] ; then
+	printf "\\n\\tRoot filesystem already built.\\n
 \\t%s and\\n\\t%s must be manually removed to proceed.
 \\tNothing to do. Exiting.\\n" "${BARF_ROOTDIR}" "${BARF_CONFIG}"
 	exit 0
+fi
+
+init_srcdirs ()
+{
+	printf "\\n\\tCreating source work directories...\\n"
+
+	# In case of wonky config file, we always make sure we can create the directories
+	mkdir -p "${CROSSTOOL_SRCDIR}" || \
+	{
+		printf "\\tFailed to create %s. Exiting.\\n" \
+		"${CROSSTOOL_SRCDIR}" ; exit 1 ;
+	}
+
+	mkdir -p "${BARF_SRCDIR}" || \
+	{
+		printf "\\tFailed to create %s. Exiting.\\n" \
+		"${BARF_SRCDIR}" ; exit 1 ;
+	}
+
+}
+
+printf "\\n\\tChecking if %s exists...\\n" "${CROSSTOOL_SRCDIR}"
+if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
+	printf "\\tIt does.\\n"
+else
+	printf "\\tIt does not, must be your first rodeo.\\n
+\\tWelcome! I really hope this script works for you.
+\\tPlease report any bugs to the author of this program.\\n"
+	init_srcdirs
 fi
 
 # unset in case set previously
@@ -471,10 +538,10 @@ TAR_LOC="http://ftp.gnu.org/gnu/tar/tar-${TAR_VER}.tar.xz"
 
 # TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
 LINUX_COMP="${TARDIR}/linux-${LINUX_VER}.tar.xz"
-GCC_SRCDIR="${SRCDIR}/gcc-${GCC_VER}"
-MPFR_SRCDIR="${SRCDIR}/mpfr-${MPFR_VER}"
-MPC_SRCDIR="${SRCDIR}/mpc-${MPC_VER}"
-GMP_SRCDIR="${SRCDIR}/gmp-${GMP_VER}"
+GCC_COMP="${TARDIR}/gcc-${GCC_VER}.tar.bz2"
+MPFR_COMP="${TARDIR}/mpfr-${MPFR_VER}.tar.xz"
+MPC_COMP="${TARDIR}/mpc-${MPC_VER}.tar.gz"
+GMP_COMP="${TARDIR}/gmp-${GMP_VER}.tar.xz"
 GLIBC_COMP="${TARDIR}/glibc-${GLIBC_VER}.tar.bz2"
 GPERF_COMP="${TARDIR}/gperf-${GPERF_VER}.tar.gz"
 BASH_COMP="${TARDIR}/bash-${BASH_VER}.tar.gz"
@@ -500,34 +567,34 @@ NET_TOOLS_COMP="${TARDIR}/net-tools-${NET_TOOLS_VER}.tar.bz2"
 TAR_COMP="${TARDIR}/tar-${TAR_VER}.tar.xz"
 
 # TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
-LINUX_SRCDIR="${SRCDIR}/linux-${LINUX_VER}"
-GCC_SRCDIR="${SRCDIR}/gcc-${GCC_VER}"
-MPFR_SRCDIR="${SRCDIR}/mpfr-${MPFR_VER}"
-MPC_SRCDIR="${SRCDIR}/mpc-${MPC_VER}"
-GMP_SRCDIR="${SRCDIR}/gmp-${GMP_VER}"
-GLIBC_SRCDIR="${SRCDIR}/glibc-${GLIBC_VER}"
-GPERF_SRCDIR="${SRCDIR}/gperf-${GPERF_VER}"
-BASH_SRCDIR="${SRCDIR}/bash-${BASH_VER}_${BASH_PATCHLEVEL}"
-BINUTILS_SRCDIR="${SRCDIR}/binutils-${BINUTILS_VER}"
-NCURSES_SRCDIR="${SRCDIR}/ncurses-${NCURSES_VER}"
-ZLIB_SRCDIR="${SRCDIR}/zlib-${ZLIB_VER}"
-COREUTILS_SRCDIR="${SRCDIR}/coreutils-${COREUTILS_VER}"
-UTIL_LINUX_SRCDIR="${SRCDIR}/util-linux-${UTIL_LINUX_VER}"
-FINDUTILS_SRCDIR="${SRCDIR}/findutils-${FINDUTILS_VER}"
-GREP_SRCDIR="${SRCDIR}/grep-${GREP_VER}"
-GZIP_SRCDIR="${SRCDIR}/gzip-${GZIP_VER}"
-SED_SRCDIR="${SRCDIR}/sed-${SED_VER}"
-GAWK_SRCDIR="${SRCDIR}/gawk-${GAWK_VER}"
-PAM_SRCDIR="${SRCDIR}/pam-${PAM_VER}"
-SHADOW_SRCDIR="${SRCDIR}/shadow-${SHADOW_VER}"
-OPENRC_SRCDIR="${SRCDIR}/openrc-${OPENRC_VER}"
-SYSVINIT_SRCDIR="${SRCDIR}/sysvinit-${SYSVINIT_VER}"
-EUDEV_SRCDIR="${SRCDIR}/eudev-${EUDEV_VER}"
-PROCPS_SRCDIR="${SRCDIR}/procps-${PROCPS_VER}"
-LIBRESSL_SRCDIR="${SRCDIR}/libressl-${LIBRESSL_VER}"
-IPROUTE2_SRCDIR="${SRCDIR}/iproute2-${IPROUTE2_VER}"
-NET_TOOLS_SRCDIR="${SRCDIR}/net-tools-${NET_TOOLS_VER}"
-TAR_SRCDIR="${SRCDIR}/tar-${TAR_VER}"
+LINUX_SRCDIR="${BARF_SRCDIR}/linux-${LINUX_VER}"
+GCC_SRCDIR="${BARF_SRCDIR}/gcc-${GCC_VER}"
+MPFR_SRCDIR="${BARF_SRCDIR}/mpfr-${MPFR_VER}"
+MPC_SRCDIR="${BARF_SRCDIR}/mpc-${MPC_VER}"
+GMP_SRCDIR="${BARF_SRCDIR}/gmp-${GMP_VER}"
+GLIBC_SRCDIR="${BARF_SRCDIR}/glibc-${GLIBC_VER}"
+GPERF_SRCDIR="${BARF_SRCDIR}/gperf-${GPERF_VER}"
+BASH_SRCDIR="${BARF_SRCDIR}/bash-${BASH_VER}_${BASH_PATCHLEVEL}"
+BINUTILS_SRCDIR="${BARF_SRCDIR}/binutils-${BINUTILS_VER}"
+NCURSES_SRCDIR="${BARF_SRCDIR}/ncurses-${NCURSES_VER}"
+ZLIB_SRCDIR="${BARF_SRCDIR}/zlib-${ZLIB_VER}"
+COREUTILS_SRCDIR="${BARF_SRCDIR}/coreutils-${COREUTILS_VER}"
+UTIL_LINUX_SRCDIR="${BARF_SRCDIR}/util-linux-${UTIL_LINUX_VER}"
+FINDUTILS_SRCDIR="${BARF_SRCDIR}/findutils-${FINDUTILS_VER}"
+GREP_SRCDIR="${BARF_SRCDIR}/grep-${GREP_VER}"
+GZIP_SRCDIR="${BARF_SRCDIR}/gzip-${GZIP_VER}"
+SED_SRCDIR="${BARF_SRCDIR}/sed-${SED_VER}"
+GAWK_SRCDIR="${BARF_SRCDIR}/gawk-${GAWK_VER}"
+PAM_SRCDIR="${BARF_SRCDIR}/pam-${PAM_VER}"
+SHADOW_SRCDIR="${BARF_SRCDIR}/shadow-${SHADOW_VER}"
+OPENRC_SRCDIR="${BARF_SRCDIR}/openrc-${OPENRC_VER}"
+SYSVINIT_SRCDIR="${BARF_SRCDIR}/sysvinit-${SYSVINIT_VER}"
+EUDEV_SRCDIR="${BARF_SRCDIR}/eudev-${EUDEV_VER}"
+PROCPS_SRCDIR="${BARF_SRCDIR}/procps-${PROCPS_VER}"
+LIBRESSL_SRCDIR="${BARF_SRCDIR}/libressl-${LIBRESSL_VER}"
+IPROUTE2_SRCDIR="${BARF_SRCDIR}/iproute2-${IPROUTE2_VER}"
+NET_TOOLS_SRCDIR="${BARF_SRCDIR}/net-tools-${NET_TOOLS_VER}"
+TAR_SRCDIR="${BARF_SRCDIR}/tar-${TAR_VER}"
 
 #
 # Fetch any required sources
@@ -838,14 +905,16 @@ verify_sources ()
 # Prepare sources (rename source directories, apply patches, etc)
 #
 
+# TODO: Bash p12
 prepare_sources ()
 {
-	# TODO: Bash p12
+	sleep 0
+}
 
 # TODO:
 update_crosstool ()
 {
-if [[ -d "${CROSSTOOL_SRCDIR}" ; then
+if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
 	printf "\\n\\tUpdating Crosstool-NG...\\n"
 
 	cd "${CROSSTOOL_SRCDIR}" || \
@@ -867,44 +936,21 @@ fi
 # End of update sources
 #
 
-init_crosstool_srcdir ()
-{
-	printf "\\n\\tCreating source work directory...\\n"
-
-	# In case of wonky config file, we always double check
-	mkdir -p "${CROSSTOOL_SRCDIR}" || \
-	{
-		printf "\\tFailed to create %s. Exiting.\\n" \
-		"${CROSSTOOL_SRCDIR}" ; exit 1 ;
-	}
-
-}
-
-printf "\\n\\tChecking if %s exists...\\n" "${BARF_SRCDIR}"
-if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
-	printf "\\tIt does.\\n"
-else
-	printf "\\tIt does not, must be your first rodeo.\\n
-\\tWelcome! I really hope this script works for you.
-\\tPlease report any bugs to the author of this program.\\n"
-	init_crosstool_srcdir
-fi
-
 main ()
 {
 	# TODO
 	sanity_check
 
 	# TODO
-	fetch_sources
+	# fetch_sources
 
 	# TODO
-	unpack_sources
+	# unpack_sources
 
 	# TODO
-	verify_sources
+	# verify_sources
 
-	# FIXME:
+	# TODO:
 	# update_crosstool
 }
 
@@ -936,8 +982,8 @@ sleep 0
 # build_crosstool
 # build_rootfs
 
-# FIXME: 
-# main
+# TODO:
+main
 
 exit 0
 
