@@ -4,11 +4,17 @@ Bootable ARM64 Root Filesystem, codename: BARF
 
 This project is aimed at building a complete filesystem for ARM64 platforms, entirely from bare metal.
 
-BARF; originated from NTU's sick Toolchain_Builder project, brings you an easily and fully customizable ARM64 powerhouse script, designed specifically for you, from you. Edit easy-to-use variables, modify strings, configure and design your embedded your system, your way. This project is about YOU!
+BARF; originated from NTU's sick Toolchain_Builder project, brings you an easily and fully customizable ARM64 powerhouse, designed specifically for you, from you. Edit easy-to-use variables, modify strings, configure and design your embedded your system, your way. This project is about YOU!
 
-Building a Cross Linux from Scratch (CLFS) system has never been easier. Forget about reading documentation on building cross compilers, configuring embedded systems, and those long, boring PDF pages. BARF makes this process easy for you by giving you the choice of freedom, while keeping simplicity in mind. BARF is written entirely in GNU Bash, and is fully customizable, with everything in one place. BARF handles everything from building the cross compiler (Crosstool-NG) to your system packages. A simple script for even the most complex embedded installs. No secrets, no magic. Want something chnaged? Do it yourself with ease!
+Building a Cross Linux from Scratch (CLFS) system has never been easier. Forget about reading documentation on building cross compilers, configuring embedded systems, and those long, boring PDF pages. BARF makes this process easy for you by giving you the choice of freedom, while keeping simplicity in mind. BARF is written entirely in GNU Bash, and is fully customizable, with everything in one place. BARF handles everything from building the cross compiler (Crosstool-NG) to your system packages. A simple script for even the most complex embedded installs. No secrets, no magic. Want something changed? Do it yourself with ease!
 
-FAQ:
+### Prerequisites:
+
+A complete working native toolchain:
+
+flex bison libtool binutils gcc g++ glibc make autoconf automake autogen type file bc elfutils sed gawk
+
+### FAQ:
 
 Q: Why Bash?
 
@@ -24,20 +30,18 @@ A: No, BARF does not build, use, or even download any of SystemD, nor any packag
 
 Q: Is BARF associated with the NSA at all?
 
-A: BARF is in no way affiliated, licensed, or endorsed by the NSA, nor any government agency for that matter.
+A: No, BARF is in no way affiliated, licensed, or endorsed by the NSA, nor any government agency for that matter.
 
 Q: Is BARF secure?
 
 A: The stability and security of BARF is strictly dependant on the software that BARF compiles and puts into your root filesystem. Packages that are built by default can be removed from the script, or added by hand, and you, yourself, can be a developer too! WOW!
 
-BARF's current goals:
+Q: How does BARF compare to Buildroot?
+
+A: BARF's code base is much smaller, it's all in one language, one file, and one place. There is no ncurses interface, no Makefile, and none of the bells and whistles or a fancy front-end that you get with Buildroot. BARF's design is simplistic as you can get. You're better off knowing more about Linux internals when using BARF than Buildroot as it is not as user-friendly, but rather extremely developer-friendly. DIY is the main focus of this project, giving you absolutely full control of the build system and every aspect of it's design.
+
+### BARF's current goals:
 
 - Build a toolchain (Crosstool-NG)
 - Linux Kernel with tested configs (Raspberry Pi 3)
 - Root filesystem
-
-### Prerequisites:
-
-A complete working native toolchain:
-
-flex bison libtool binutils gcc g++ glibc make autoconf automake autogen type file bc elfutils sed gawk
