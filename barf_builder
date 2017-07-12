@@ -704,287 +704,287 @@ unpack_sources ()
 {
 	printf "\\tUnpacking any sources if needed...\\n"
 
-if [[ ! -d  "${LINUX_SRCDIR}" ]] ; then
+if [[ ! -d "${LINUX_SRCDIR}" ]] ; then
 	tar xf "${LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${LINUX_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${GCC_SRCDIR}" ]] ; then
+if [[ ! -d "${GCC_SRCDIR}" ]] ; then
 	tar xf "${GCC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${GCC_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${MPFR_SRCDIR}" ]] ; then
+if [[ ! -d "${MPFR_SRCDIR}" ]] ; then
 	tar xf "${MPFR_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${MPFR_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${MPC_SRCDIR}" ]] ; then
+if [[ ! -d "${MPC_SRCDIR}" ]] ; then
 	tar xf "${MPC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${MPC_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${GMP_SRCDIR}" ]] ; then
+if [[ ! -d "${GMP_SRCDIR}" ]] ; then
 	tar xf "${GMP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${GMP_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${GLIBC_SRCDIR}" ]] ; then
+if [[ ! -d "${GLIBC_SRCDIR}" ]] ; then
 	tar xf "${GLIBC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${GLIBC_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${GPERF_SRCDIR}" ]] ; then
+if [[ ! -d "${GPERF_SRCDIR}" ]] ; then
 	tar xf "${GPERF_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${GPERF_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${BASH_SRCDIR}" ]] ; then
+if [[ ! -d "${BASH_SRCDIR}" ]] ; then
 	tar xf "${BASH_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${BASH_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${BINUTILS_SRCDIR}" ]] ; then
+if [[ ! -d "${BINUTILS_SRCDIR}" ]] ; then
 	tar xf "${BINUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${BINUTILS_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${NCURSES_SRCDIR}" ]] ; then
+if [[ ! -d "${NCURSES_SRCDIR}" ]] ; then
 	tar xf "${NCURSES_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${NCURSES_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${ZLIB_SRCDIR}" ]] ; then
+if [[ ! -d "${ZLIB_SRCDIR}" ]] ; then
 	tar xf "${ZLIB_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${ZLIB_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${COREUTILS_SRCDIR}" ]] ; then
+if [[ ! -d "${COREUTILS_SRCDIR}" ]] ; then
 	tar xf "${COREUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${COREUTILS_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${UTIL_LINUX_SRCDIR}" ]] ; then
+if [[ ! -d "${UTIL_LINUX_SRCDIR}" ]] ; then
 	tar xf "${UTIL_LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${UTIL_LINUX_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${FINDUTILS_SRCDIR}" ]] ; then
+if [[ ! -d "${FINDUTILS_SRCDIR}" ]] ; then
 	tar xf "${FINDUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${FINDUTILS_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${GREP_SRCDIR}" ]] ; then
+if [[ ! -d "${GREP_SRCDIR}" ]] ; then
 	tar xf "${GREP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${GREP_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${GZIP_SRCDIR}" ]] ; then
+if [[ ! -d "${GZIP_SRCDIR}" ]] ; then
 	tar xf "${GZIP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${GZIP_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${SED_SRCDIR}" ]] ; then
+if [[ ! -d "${SED_SRCDIR}" ]] ; then
 	tar xf "${SED_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${SED_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${GAWK_SRCDIR}" ]] ; then
+if [[ ! -d "${GAWK_SRCDIR}" ]] ; then
 	tar xf "${GAWK_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${GAWK_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${PAM_SRCDIR}" ]] ; then
+if [[ ! -d "${PAM_SRCDIR}" ]] ; then
 	tar xf "${PAM_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${PAM_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${SHADOW_SRCDIR}" ]] ; then
+if [[ ! -d "${SHADOW_SRCDIR}" ]] ; then
 	tar xf "${SHADOW_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${SHADOW_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${OPENRC_SRCDIR}" ]] ; then
+if [[ ! -d "${OPENRC_SRCDIR}" ]] ; then
 	tar xf "${OPENRC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${OPENRC_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${SYSVINIT_SRCDIR}" ]] ; then
+if [[ ! -d "${SYSVINIT_SRCDIR}" ]] ; then
 	tar xf "${SYSVINIT_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${SYSVINIT_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${EUDEV_SRCDIR}" ]] ; then
+if [[ ! -d "${EUDEV_SRCDIR}" ]] ; then
 	tar xf "${EUDEV_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${EUDEV_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${PROCPS_SRCDIR}" ]] ; then
+if [[ ! -d "${PROCPS_SRCDIR}" ]] ; then
 	tar xf "${PROCPS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${PROCPS_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${LIBRESSL_SRCDIR}" ]] ; then
+if [[ ! -d "${LIBRESSL_SRCDIR}" ]] ; then
 	tar xf "${LIBRESSL_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${LIBRESSL_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${IPROUTE2_SRCDIR}" ]] ; then
+if [[ ! -d "${IPROUTE2_SRCDIR}" ]] ; then
 	tar xf "${IPROUTE2_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${IPROUTE2_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${NET_TOOLS_SRCDIR}" ]] ; then
+if [[ ! -d "${NET_TOOLS_SRCDIR}" ]] ; then
 	tar xf "${NET_TOOLS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${NET_TOOLS_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${TAR_SRCDIR}" ]] ; then
+if [[ ! -d "${TAR_SRCDIR}" ]] ; then
 	tar xf "${TAR_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${TAR_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${IPTABLES_SRCDIR}" ]] ; then
+if [[ ! -d "${IPTABLES_SRCDIR}" ]] ; then
 	tar xf "${IPTABLES_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${IPTABLES_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${FLEX_SRCDIR}" ]] ; then
+if [[ ! -d "${FLEX_SRCDIR}" ]] ; then
 	tar xf "${FLEX_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${FLEX_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${TEXINFO_SRCDIR}" ]] ; then
+if [[ ! -d "${TEXINFO_SRCDIR}" ]] ; then
 	tar xf "${TEXINFO_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${TEXINFO_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${ELFUTILS_SRCDIR}" ]] ; then
+if [[ ! -d "${ELFUTILS_SRCDIR}" ]] ; then
 	tar xf "${ELFUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${ELFUTILS_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${LIBTOOL_SRCDIR}" ]] ; then
+if [[ ! -d "${LIBTOOL_SRCDIR}" ]] ; then
 	tar xf "${LIBTOOL_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${LIBTOOL_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${XZ_SRCDIR}" ]] ; then
+if [[ ! -d "${XZ_SRCDIR}" ]] ; then
 	tar xf "${XZ_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${XZ_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${LZO_SRCDIR}" ]] ; then
+if [[ ! -d "${LZO_SRCDIR}" ]] ; then
 	tar xf "${LZO_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${LZO_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${LZOP_SRCDIR}" ]] ; then
+if [[ ! -d "${LZOP_SRCDIR}" ]] ; then
 	tar xf "${LZOP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${LZOP_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${LZ4_SRCDIR}" ]] ; then
+if [[ ! -d "${LZ4_SRCDIR}" ]] ; then
 	tar xf "${LZ4_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${LZ4_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${WGET_SRCDIR}" ]] ; then
+if [[ ! -d "${WGET_SRCDIR}" ]] ; then
 	tar xf "${WGET_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${WGET_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${AUTOMAKE_SRCDIR}" ]] ; then
+if [[ ! -d "${AUTOMAKE_SRCDIR}" ]] ; then
 	tar xf "${AUTOMAKE_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${AUTOMAKE_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${AUTOCONF_SRCDIR}" ]] ; then
+if [[ ! -d "${AUTOCONF_SRCDIR}" ]] ; then
 	tar xf "${AUTOCONF_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${AUTOCONF_SRCDIR}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d  "${M4_SRCDIR}" ]] ; then
+if [[ ! -d "${M4_SRCDIR}" ]] ; then
 	tar xf "${M4_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
 		printf "\\tError decompressing %s. Exiting.\\n" "${M4_SRCDIR}" ; exit 1 ;
