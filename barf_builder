@@ -15,8 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# TODO:
-# Add fetching of all packages
+# TODO
 # Build Crosstool-NG
 # Compile root filesystem
 
@@ -50,7 +49,7 @@ fi
 # i.e. #define X_Y_Z 1 (for true) therefor NOT a typo
 
 # Reduce lengthly printf lines
-REPORT_BUG_EXIT="\\n\\tPlease report bug to script maintainer.\\n\\tExiting.\\n"
+REPORT_BUG_EXIT="Please report bug to script maintainer. Exiting."
 
 #
 # User configuation:
@@ -69,6 +68,7 @@ user_defaults ()
 	unset CROSSTOOL_BINDIR
 
 	BARF_CONFIG="${STARTDIR}/barf.config"
+	BARF_TARDIR="${STARTDIR}/barf/tar"
 	BARF_SRCDIR="${STARTDIR}/barf/src"
 	BARF_ROOTFS="${STARTDIR}/barf/rootfs"
 	BARF_PATCHDIR="${STARTDIR}/barf/patches"
@@ -77,6 +77,52 @@ user_defaults ()
 	CROSSTOOL_SRCDIR="${STARTDIR}/barf/crosstool-ng"
 	CROSSTOOL_BINDIR="${STARTDIR}/barf/cross-bin"
 }
+
+LINUX_VER="4.9.35"
+GCC_VER="6.3.0"
+MPFR_VER="3.1.5"
+MPC_VER="1.0.3"
+GMP_VER="6.1.2"
+GLIBC_VER="2.25"
+GPERF_VER="3.1"
+BASH_VER="4.4"
+BASH_VER_CUT="44"
+BASH_PATCHLEVEL="p12"
+BINUTILS_VER="2.28"
+NCURSES_VER="6.0"
+ZLIB_VER="1.2.11"
+COREUTILS_VER="8.27"
+UTIL_LINUX_VER="2.30"
+FINDUTILS_VER="4.6.0"
+GREP_VER="3.1"
+GZIP_VER="1.8"
+SED_VER="4.4"
+GAWK_VER="4.1.4"
+PAM_VER="1.3.0"
+SHADOW_VER="4.5"
+OPENRC_VER="0.27.2"
+SYSVINIT_VER="2.88dsf"
+EUDEV_VER="3.2.2"
+PROCPS_NG_VER="3.3.12"
+LIBRESSL_VER="2.5.4"
+IPROUTE2_VER="4.11.0"
+NET_TOOLS_VER="1.60"
+TAR_VER="1.29"
+IPTABLES_VER="1.6.1"
+FLEX_VER="2.6.4"
+TEXINFO_VER="6.4"
+BISON_VER="3.0.4"
+BC_VER="1.07.1"
+ELFUTILS_VER="0.169"
+LIBTOOL_VER="2.4.6"
+XZ_VER="5.2.3"
+LZO_VER="2.10"
+LZOP_VER="1.03"
+LZ4_VER="1.7.5"
+WGET_VER="1.19.1"
+AUTOMAKE_VER="1.15.1"
+AUTOCONF_VER="2.69"
+M4_VER="1.4.18"
 
 #
 # End of user configuration
@@ -99,11 +145,13 @@ generate_config ()
 # All paths must be absolute! \\n
 CORES=%s\\n
 BARF_SRCDIR=%s
+BARF_TARDIR=%s
 BARF_ROOTFS=%s
 BARF_PATCHDIR=%s
 CROSSTOOL_SRCDIR=%s
 CROSSTOOL_BINDIR=%s\\n" \
- "${CORES}" "${BARF_SRCDIR}" "${BARF_ROOTFS}" "${BARF_PATCHDIR}" "${CROSSTOOL_SRCDIR}" "${CROSSTOOL_BINDIR}" &> "${BARF_CONFIG}"
+ "${CORES}" "${BARF_SRCDIR}" "${BARF_TARDIR}" "${BARF_ROOTFS}" \
+ "${BARF_PATCHDIR}" "${CROSSTOOL_SRCDIR}" "${CROSSTOOL_BINDIR}" &> "${BARF_CONFIG}"
 }
 
 #
@@ -273,7 +321,7 @@ else
 			fi
 		fi
 	else
-		printf "\\tError detecting git version.%s" "${REPORT_BUG_EXIT}"
+		printf "\\tError detecting git version.\\n\\t%s\\n" "${REPORT_BUG_EXIT}"
 	fi
 
 # Only x86/amd64 are supported
@@ -289,6 +337,7 @@ else
 \\tOnly x86 and amd64 platforms supported.\\n"
 		exit 1
 	fi
+	unset
 	SYSTEM_OK=1
 	printf "\\nARCH_UNAME=%s\\n" "${ARCH_UNAME}" >> "${BARF_CONFIG}"
 	printf "\\nSYSTEM_OK=%s" "${SYSTEM_OK}" >> "${BARF_CONFIG}"
@@ -316,7 +365,7 @@ else
 \\tplease report your success, your feedback is greatly appreciated.\\n"
 			exit 1
 		else
-			printf "\\tError detecting the build environment.%s" "${REPORT_BUG_EXIT}"
+			printf "\\tError detecting the build environment.\\n\\t%s\\n" "${REPORT_BUG_EXIT}"
 			exit 1
 		fi
 	else
@@ -336,7 +385,7 @@ fi
 			exit 1
 		fi
 	else
-		printf "\\tError processing config file.%s" "${REPORT_BUG_EXIT}"
+		printf "\\tError processing config file.\\n\\t%s\\n" "${REPORT_BUG_EXIT}"
 		exit 1
 	fi
 	printf "\\tAssuming everything else is ok.\\n"
@@ -421,16 +470,9 @@ elif [[ -d "${BARF_ROOTFS}" && "${ROOTFS_COMPLETE}" == 1 ]] ; then
 	exit 0
 fi
 
-init_srcdirs ()
+init_barf_dir ()
 {
 	printf "\\n\\tCreating source work directories...\\n"
-
-	# In case of wonky config file, we always make sure we can create the directories
-	mkdir -p "${CROSSTOOL_SRCDIR}" || \
-	{
-		printf "\\tFailed to create %s. Exiting.\\n" \
-		"${CROSSTOOL_SRCDIR}" ; exit 1 ;
-	}
 
 	mkdir -p "${BARF_SRCDIR}" || \
 	{
@@ -440,14 +482,14 @@ init_srcdirs ()
 
 }
 
-printf "\\n\\tChecking if %s exists...\\n" "${CROSSTOOL_SRCDIR}"
-if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
+printf "\\n\\tChecking if %s exists...\\n" "${BARF_SRCDIR}"
+if [[ -d "${BARF_SRCDIR}" ]] ; then
 	printf "\\tIt does.\\n"
 else
 	printf "\\tIt does not, must be your first rodeo.\\n
 \\tWelcome! I really hope this script works for you.
 \\tPlease report any bugs to the author of this program.\\n"
-	init_srcdirs
+	init_barf_dir
 fi
 
 # unset in case set previously
@@ -460,58 +502,13 @@ UBOOT_GIT="git://git.denx.de/u-boot.git"
 
 # Reduce bandwidth, speed up the cloning process
 CROSSTOOL_GIT_OPTS=(--depth"="1 -b "${CROSSTOOL_GIT_BRANCH}" --single-branch)
-# Additional U-Boot git options are called directly in the prepare_sources function
-# Modify those as you wish and optionally modify or remove the line below
+# Additional U-Boot git options are called directly but
+# you are highly advised not to mess with those unless you know what you are doing.
+# You may update UBOOT_GIT_TAG to the latest stable U-Boot release if it is out-of-date.
+# Removing the following line will give you the latest development code if you need it.
 UBOOT_GIT_TAG="v2017.07"
 
-LINUX_VER="4.9.35"
-LINUX_MAJOR_VER="v4.x"
-GCC_VER="6.3.0"
-MPFR_VER="3.1.5"
-MPC_VER="1.0.3"
-GMP_VER="6.1.2"
-GLIBC_VER="2.25"
-GPERF_VER="3.1"
-BASH_VER="4.4"
-BASH_VER_CUT="44"
-BASH_PATCHLEVEL="p12"
-BINUTILS_VER="2.28"
-NCURSES_VER="6.0"
-ZLIB_VER="1.2.11"
-COREUTILS_VER="8.27"
-UTIL_LINUX_VER="2.30"
-FINDUTILS_VER="4.6.0"
-GREP_VER="3.1"
-GZIP_VER="1.8"
-SED_VER="4.4"
-GAWK_VER="4.1.4"
-PAM_VER="1.3.0"
-SHADOW_VER="4.5"
-OPENRC_VER="0.27.2"
-SYSVINIT_VER="2.88dsf"
-EUDEV_VER="3.2.2"
-PROCPS_VER="3.3.12"
-LIBRESSL_VER="2.5.4"
-IPROUTE2_VER="4.11.0"
-NET_TOOLS_VER="1.60"
-TAR_VER="1.29"
-IPTABLES_VER="1.6.1"
-FLEX_VER="2.6.4"
-TEXINFO_VER="6.4"
-BISON_VER="3.0.4"
-BC_VER="1.07.1"
-ELFUTILS_VER="0.169"
-LIBTOOL_VER="2.4.6"
-XZ_VER="5.2.3"
-LZO_VER="2.10"
-LZOP_VER="1.03"
-LZ4_VER="1.7.5"
-WGET_VER="1.19.1"
-AUTOMAKE_VER="1.15.1"
-AUTOCONF_VER="2.69"
-M4_VER="1.4.18"
-
-LINUX_LOC="https://cdn.kernel.org/pub/linux/kernel/${LINUX_MAJOR_VER}/linux-${LINUX_VER}.tar.xz"
+LINUX_LOC="https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-${LINUX_VER}.tar.xz"
 GCC_LOC="https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VER}/gcc-${GCC_VER}.tar.bz2"
 MPFR_LOC="https://ftp.gnu.org/gnu/mpfr/mpfr-${MPFR_VER}.tar.xz"
 MPC_LOC="http://ftp.gnu.org/gnu/mpc/mpc-${MPC_VER}.tar.gz"
@@ -519,34 +516,22 @@ GMP_LOC="https://ftp.gnu.org/gnu/gmp/gmp-${GMP_VER}.tar.xz"
 GLIBC_LOC="https://ftp.gnu.org/gnu/libc/glibc-${GLIBC_VER}.tar.bz2"
 GPERF_LOC="https://ftp.gnu.org/gnu/gperf/gperf-${GPERF_VER}.tar.gz"
 BASH_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}.tar.gz"
-BASH_001_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-001"
-BASH_002_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-002"
-BASH_003_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-003"
-BASH_004_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-004"
-BASH_005_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-005"
-BASH_006_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-006"
-BASH_007_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-007"
-BASH_008_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-008"
-BASH_009_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-009"
-BASH_010_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-010"
-BASH_011_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-011"
-BASH_012_LOC="https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-012"
 BINUTILS_LOC="https://ftp.gnu.org/gnu/binutils/binutils-${BINUTILS_VER}.tar.bz2"
 NCURSES_LOC="https://ftp.gnu.org/gnu/ncurses/ncurses-${NCURSES_VER}.tar.gz"
 ZLIB_LOC="https://www.zlib.net/zlib-${ZLIB_VER}.tar.gz"
 COREUTILS_LOC="https://ftp.gnu.org/gnu/coreutils/coreutils-${COREUTILS_VER}.tar.xz"
 UTIL_LINUX_LOC="https://www.kernel.org/pub/linux/utils/util-linux/v${UTIL_LINUX_VER}/util-linux-${UTIL_LINUX_VER}.tar.xz"
-FINUTILS_LOC="https://ftp.gnu.org/gnu/findutils/findutils-${FINDUTILS_VER}.tar.gz"
+FINDUTILS_LOC="https://ftp.gnu.org/gnu/findutils/findutils-${FINDUTILS_VER}.tar.gz"
 GREP_LOC="https://ftp.gnu.org/gnu/grep/grep-${GREP_VER}.tar.xz"
 GZIP_LOC="https://ftp.gnu.org/gnu/gzip/gzip-${GZIP_VER}.tar.xz"
 SED_LOC="https://ftp.gnu.org/gnu/sed/sed-${SED_VER}.tar.xz"
 GAWK_LOC="https://ftp.gnu.org/gnu/gawk/gawk-${GAWK_VER}.tar.xz"
 PAM_LOC="http://www.linux-pam.org/library/Linux-PAM-${PAM_VER}.tar.gz"
-SHADOW_LOC="https://github.com/shadow-maint/shadow/releases/download/${SHADOW_VER}/shadow-${SHADOW_VER}.tar.xz"
+SHADOW_LOC="https://github.com/shadow-maint/shadow/archive/${SHADOW_VER}.tar.gz"
 OPENRC_LOC="https://github.com/OpenRC/openrc/archive/${OPENRC_VER}.tar.gz"
 SYSVINIT_LOC="http://download.savannah.gnu.org/releases/sysvinit/sysvinit-${SYSVINIT_VER}.tar.bz2"
 EUDEV_LOC="https://github.com/gentoo/eudev/archive/v${EUDEV_VER}.tar.gz"
-PROCPS_LOC="https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-${PROCPS_VER}.tar.xz"
+PROCPS_NG_LOC="https://downloads.sourceforge.net/project/procps-ng/Production/procps-ng-${PROCPS_NG_VER}.tar.xz"
 LIBRESSL_LOC="https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-${LIBRESSL_VER}.tar.gz"
 IPROUTE2_LOC="https://www.kernel.org/pub/linux/utils/net/iproute2/iproute2-${IPROUTE2_VER}.tar.xz"
 NET_TOOLS_LOC="https://downloads.sourceforge.net/project/net-tools/net-tools-${NET_TOOLS_VER}.tar.bz2"
@@ -567,49 +552,49 @@ AUTOMAKE_LOC="https://ftp.gnu.org/gnu/automake/automake-${AUTOMAKE_VER}.tar.xz"
 AUTOCONF_LOC="https://ftp.gnu.org/gnu/autoconf/autoconf-${AUTOCONF_VER}.tar.xz"
 M4_LOC="https://ftp.gnu.org/gnu/m4/m4-${M4_VER}.tar.xz"
 
-LINUX_COMP="${TARDIR}/linux-${LINUX_VER}.tar.xz"
-GCC_COMP="${TARDIR}/gcc-${GCC_VER}.tar.bz2"
-MPFR_COMP="${TARDIR}/mpfr-${MPFR_VER}.tar.xz"
-MPC_COMP="${TARDIR}/mpc-${MPC_VER}.tar.gz"
-GMP_COMP="${TARDIR}/gmp-${GMP_VER}.tar.xz"
-GLIBC_COMP="${TARDIR}/glibc-${GLIBC_VER}.tar.bz2"
-GPERF_COMP="${TARDIR}/gperf-${GPERF_VER}.tar.gz"
-BASH_COMP="${TARDIR}/bash-${BASH_VER}.tar.gz"
-BINUTILS_COMP="${TARDIR}/binutils-${BINUTILS_VER}.tar.bz2"
-NCURSES_COMP="${TARDIR}/ncurses-${NCURSES_VER}.tar.gz"
-ZLIB_COMP="${TARDIR}/zlib-${ZLIB_VER}.tar.gz"
-COREUTILS_COMP="${TARDIR}/coreutils-${COREUTILS_VER}.tar.xz"
-UTIL_LINUX_COMP="${TARDIR}/util-linux-${UTIL_LINUX_VER}.tar.xz"
-FINDUTILS_COMP="${TARDIR}/findutils-${FINDUTILS_VER}.tar.gz"
-GREP_COMP="${TARDIR}/grep-${GREP_VER}.tar.xz"
-GZIP_COMP="${TARDIR}/gzip-${GZIP_VER}.tar.xz"
-SED_COMP="${TARDIR}/sed-${SED_VER}.tar.xz"
-GAWK_COMP="${TARDIR}/gawk-${GAWK_VER}.tar.xz"
-PAM_COMP="${TARDIR}/Linux-PAM-${PAM_VER}.tar.gz"
-SHADOW_COMP="${TARDIR}/shadow-${SHADOW_VER}.tar.xz"
-OPENRC_COMP="${TARDIR}/${OPENRC_VER}.tar.gz"
-SYSVINIT_COMP="${TARDIR}/sysvinit-${SYSVINIT_VER}.tar.bz2"
-EUDEV_COMP="${TARDIR}/v${EUDEV_VER}.tar.gz"
-PROCPS_COMP="${TARDIR}/procps-ng-${PROCPS_VER}.tar.xz"
-LIBRESSL_COMP="${TARDIR}/libressl-${LIBRESSL_VER}.tar.gz"
-IPROUTE2_COMP="${TARDIR}/iproute2-${IPROUTE2_VER}.tar.xz"
-NET_TOOLS_COMP="${TARDIR}/net-tools-${NET_TOOLS_VER}.tar.bz2"
-TAR_COMP="${TARDIR}/tar-${TAR_VER}.tar.xz"
-IPTABLES_COMP="${TARDIR}/tar-${TAR_VER}.tar.bz2"
-FLEX_COMP="${TARDIR}/v${FLEX_VER}.tar.gz"
-TEXINFO_COMP="${TARDIR}/texinfo-${TEXINFO_VER}.tar.xz"
-BISON_COMP="${TARDIR}/bison-${BISON_VER}.tar.xz"
-BC_COMP="${TARDIR}/bc-${BC_VER}.tar.gz"
-ELFUTILS_COMP="${TARDIR}/elfutils-${ELFUTILS_VER}.tar.bz2"
-LIBTOOL_COMP="${TARDIR}/libtool-${LIBTOOL_VER}.tar.xz"
-XZ_COMP="${TARDIR}/xz-${XZ_VER}.tar.xz"
-LZO_COMP="${TARDIR}/lzo-${LZO_VER}.tar.gz"
-LZOP_COMP="${TARDIR}/lzop-${LZOP_VER}.tar.gz"
-LZ4_COMP="${TARDIR}/v${LZ4_VER}.tar.gz"
-WGET_COMP="${TARDIR}/wget-${WGET_VER}.tar.xz"
-AUTOMAKE_COMP="${TARDIR}/automake-${AUTOMAKE_VER}.tar.xz"
-AUTOCONF_COMP="${TARDIR}/autoconf-${AUTOCONF_VER}.tar.xz"
-M4_COMP="${TARDIR}/m4-${M4_VER}.tar.xz"
+LINUX_COMP="${BARF_TARDIR}/linux-${LINUX_VER}.tar.xz"
+GCC_COMP="${BARF_TARDIR}/gcc-${GCC_VER}.tar.bz2"
+MPFR_COMP="${BARF_TARDIR}/mpfr-${MPFR_VER}.tar.xz"
+MPC_COMP="${BARF_TARDIR}/mpc-${MPC_VER}.tar.gz"
+GMP_COMP="${BARF_TARDIR}/gmp-${GMP_VER}.tar.xz"
+GLIBC_COMP="${BARF_TARDIR}/glibc-${GLIBC_VER}.tar.bz2"
+GPERF_COMP="${BARF_TARDIR}/gperf-${GPERF_VER}.tar.gz"
+BASH_COMP="${BARF_TARDIR}/bash-${BASH_VER}.tar.gz"
+BINUTILS_COMP="${BARF_TARDIR}/binutils-${BINUTILS_VER}.tar.bz2"
+NCURSES_COMP="${BARF_TARDIR}/ncurses-${NCURSES_VER}.tar.gz"
+ZLIB_COMP="${BARF_TARDIR}/zlib-${ZLIB_VER}.tar.gz"
+COREUTILS_COMP="${BARF_TARDIR}/coreutils-${COREUTILS_VER}.tar.xz"
+UTIL_LINUX_COMP="${BARF_TARDIR}/util-linux-${UTIL_LINUX_VER}.tar.xz"
+FINDUTILS_COMP="${BARF_TARDIR}/findutils-${FINDUTILS_VER}.tar.gz"
+GREP_COMP="${BARF_TARDIR}/grep-${GREP_VER}.tar.xz"
+GZIP_COMP="${BARF_TARDIR}/gzip-${GZIP_VER}.tar.xz"
+SED_COMP="${BARF_TARDIR}/sed-${SED_VER}.tar.xz"
+GAWK_COMP="${BARF_TARDIR}/gawk-${GAWK_VER}.tar.xz"
+PAM_COMP="${BARF_TARDIR}/Linux-PAM-${PAM_VER}.tar.gz"
+SHADOW_COMP="${BARF_TARDIR}/${SHADOW_VER}.tar.gz"
+OPENRC_COMP="${BARF_TARDIR}/${OPENRC_VER}.tar.gz"
+SYSVINIT_COMP="${BARF_TARDIR}/sysvinit-${SYSVINIT_VER}.tar.bz2"
+EUDEV_COMP="${BARF_TARDIR}/v${EUDEV_VER}.tar.gz"
+PROCPS_NG_COMP="${BARF_TARDIR}/procps-ng-${PROCPS_NG_VER}.tar.xz"
+LIBRESSL_COMP="${BARF_TARDIR}/libressl-${LIBRESSL_VER}.tar.gz"
+IPROUTE2_COMP="${BARF_TARDIR}/iproute2-${IPROUTE2_VER}.tar.xz"
+NET_TOOLS_COMP="${BARF_TARDIR}/net-tools-${NET_TOOLS_VER}.tar.bz2"
+TAR_COMP="${BARF_TARDIR}/tar-${TAR_VER}.tar.xz"
+IPTABLES_COMP="${BARF_TARDIR}/iptables-${IPTABLES_VER}.tar.bz2"
+FLEX_COMP="${BARF_TARDIR}/v${FLEX_VER}.tar.gz"
+TEXINFO_COMP="${BARF_TARDIR}/texinfo-${TEXINFO_VER}.tar.xz"
+BISON_COMP="${BARF_TARDIR}/bison-${BISON_VER}.tar.xz"
+BC_COMP="${BARF_TARDIR}/bc-${BC_VER}.tar.gz"
+ELFUTILS_COMP="${BARF_TARDIR}/elfutils-${ELFUTILS_VER}.tar.bz2"
+LIBTOOL_COMP="${BARF_TARDIR}/libtool-${LIBTOOL_VER}.tar.xz"
+XZ_COMP="${BARF_TARDIR}/xz-${XZ_VER}.tar.xz"
+LZO_COMP="${BARF_TARDIR}/lzo-${LZO_VER}.tar.gz"
+LZOP_COMP="${BARF_TARDIR}/lzop-${LZOP_VER}.tar.gz"
+LZ4_COMP="${BARF_TARDIR}/v${LZ4_VER}.tar.gz"
+WGET_COMP="${BARF_TARDIR}/wget-${WGET_VER}.tar.xz"
+AUTOMAKE_COMP="${BARF_TARDIR}/automake-${AUTOMAKE_VER}.tar.xz"
+AUTOCONF_COMP="${BARF_TARDIR}/autoconf-${AUTOCONF_VER}.tar.xz"
+M4_COMP="${BARF_TARDIR}/m4-${M4_VER}.tar.xz"
 
 LINUX_SRCDIR="${BARF_SRCDIR}/linux-${LINUX_VER}"
 GCC_SRCDIR="${BARF_SRCDIR}/gcc-${GCC_VER}"
@@ -618,6 +603,7 @@ MPC_SRCDIR="${BARF_SRCDIR}/mpc-${MPC_VER}"
 GMP_SRCDIR="${BARF_SRCDIR}/gmp-${GMP_VER}"
 GLIBC_SRCDIR="${BARF_SRCDIR}/glibc-${GLIBC_VER}"
 GPERF_SRCDIR="${BARF_SRCDIR}/gperf-${GPERF_VER}"
+BASH_PREPATCH_SRCDIR="${BARF_SRCDIR}/bash-${BASH_VER}"
 BASH_SRCDIR="${BARF_SRCDIR}/bash-${BASH_VER}_${BASH_PATCHLEVEL}"
 BINUTILS_SRCDIR="${BARF_SRCDIR}/binutils-${BINUTILS_VER}"
 NCURSES_SRCDIR="${BARF_SRCDIR}/ncurses-${NCURSES_VER}"
@@ -629,26 +615,28 @@ GREP_SRCDIR="${BARF_SRCDIR}/grep-${GREP_VER}"
 GZIP_SRCDIR="${BARF_SRCDIR}/gzip-${GZIP_VER}"
 SED_SRCDIR="${BARF_SRCDIR}/sed-${SED_VER}"
 GAWK_SRCDIR="${BARF_SRCDIR}/gawk-${GAWK_VER}"
-PAM_SRCDIR="${BARF_SRCDIR}/pam-${PAM_VER}"
+PAM_SRCDIR="${BARF_SRCDIR}/Linux-PAM-${PAM_VER}"
 SHADOW_SRCDIR="${BARF_SRCDIR}/shadow-${SHADOW_VER}"
 OPENRC_SRCDIR="${BARF_SRCDIR}/openrc-${OPENRC_VER}"
 SYSVINIT_SRCDIR="${BARF_SRCDIR}/sysvinit-${SYSVINIT_VER}"
 EUDEV_SRCDIR="${BARF_SRCDIR}/eudev-${EUDEV_VER}"
-PROCPS_SRCDIR="${BARF_SRCDIR}/procps-${PROCPS_VER}"
+PROCPS_NG_SRCDIR="${BARF_SRCDIR}/procps-ng-${PROCPS_NG_VER}"
 LIBRESSL_SRCDIR="${BARF_SRCDIR}/libressl-${LIBRESSL_VER}"
 IPROUTE2_SRCDIR="${BARF_SRCDIR}/iproute2-${IPROUTE2_VER}"
 NET_TOOLS_SRCDIR="${BARF_SRCDIR}/net-tools-${NET_TOOLS_VER}"
 TAR_SRCDIR="${BARF_SRCDIR}/tar-${TAR_VER}"
-IPTABLES_SRCDIR="${BARF_SRCDIR}/IPTABLES-${IPTABLES_VER}"
+IPTABLES_SRCDIR="${BARF_SRCDIR}/iptables-${IPTABLES_VER}"
 FLEX_SRCDIR="${BARF_SRCDIR}/flex-${FLEX_VER}"
 TEXINFO_SRCDIR="${BARF_SRCDIR}/texinfo-${TEXINFO_VER}"
+BISON_SRCDIR="${BARF_SRCDIR}/bison-${BISON_VER}"
+BC_SRCDIR="${BARF_SRCDIR}/bc-${BC_VER}"
 ELFUTILS_SRCDIR="${BARF_SRCDIR}/elfutils-${ELFUTILS_VER}"
-LIBTOOL_SRCDIR="${BARF_SRCDIR}/libtool-${BISON_VER}"
+LIBTOOL_SRCDIR="${BARF_SRCDIR}/libtool-${LIBTOOL_VER}"
 XZ_SRCDIR="${BARF_SRCDIR}/xz-${XZ_VER}"
 LZO_SRCDIR="${BARF_SRCDIR}/lzo-${LZO_VER}"
 LZOP_SRCDIR="${BARF_SRCDIR}/lzop-${LZOP_VER}"
 LZ4_SRCDIR="${BARF_SRCDIR}/lz4-${LZ4_VER}"
-WGET_SRCDIR="${BARF_SRCDIR}wget-${WGET_VER}"
+WGET_SRCDIR="${BARF_SRCDIR}/wget-${WGET_VER}"
 AUTOMAKE_SRCDIR="${BARF_SRCDIR}/automake-${AUTOMAKE_VER}"
 AUTOCONF_SRCDIR="${BARF_SRCDIR}/autoconf-${AUTOCONF_VER}"
 M4_SRCDIR="${BARF_SRCDIR}/m4-${M4_VER}"
@@ -662,7 +650,7 @@ fetch_sources ()
 {
 	cd "${BARF_SRCDIR}" || \
 	{
-		printf "\\tError changing directory to %s.%s" \
+		printf "\\tError changing directory to %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
@@ -670,15 +658,26 @@ fetch_sources ()
 
 if [[ ! -d "${CROSSTOOL_SRCDIR}" ]] ; then
 	printf "\\n\\tFetching Crosstool-NG via git...\\n"
-	git clone "${CROSSTOOL_GIT_OPTS[@]}" "${CROSSTOOL_GIT}" "${CROSSTOOL_SRCDIR}"
+	git clone "${CROSSTOOL_GIT_OPTS[@]}" "${CROSSTOOL_GIT}" "${CROSSTOOL_SRCDIR}" || \
+	{
+		printf "\\tError fetching Crosstool-NG. Exiting.\\n" ; exit 1 ;
+	}
 fi
 
 if [[ ! -d "${UBOOT_SRCDIR}" ]] ; then
 	printf "\\n\\tFetching U-Boot via git...\\n"
-	git clone "${UBOOT_GIT}" "${UBOOT_SRCDIR}"
+	git clone "${UBOOT_GIT}" "${UBOOT_SRCDIR}" || \
+	{
+		printf "\\tError fetching U-Boot. Exiting.\\n" ; exit 1 ;
+	}
 fi
 
-	# Linux sources
+	cd "${BARF_TARDIR}" || \
+	{
+		printf "\\tError changing directory to %s.\\n\\t%s\\n" \
+		"${BARF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
 if [[ ! -f "${LINUX_COMP}" ]] ; then
 	printf "\\n\\tDownloading Linux sources via wget...\\n"
 	wget -c "${LINUX_LOC}" || \
@@ -688,7 +687,448 @@ if [[ ! -f "${LINUX_COMP}" ]] ; then
 	}
 fi
 
-	# TODO: Add remaining sources to possibly fetch
+if [[ ! -f "${GCC_COMP}" ]] ; then
+	printf "\\n\\tDownloading GCC sources via wget...\\n"
+	wget -c "${GCC_LOC}" || \
+	{
+		printf "\\tError downloading GCC-%s. Exiting.\\n" \
+		"${GCC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LINUX_COMP}" ]] ; then
+	printf "\\n\\tDownloading MPFR sources via wget...\\n"
+	wget -c "${MPFR_LOC}" || \
+	{
+		printf "\\tError downloading MPFR-%s. Exiting.\\n" \
+		"${MPFR_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${MPC_COMP}" ]] ; then
+	printf "\\n\\tDownloading Linux sources via wget...\\n"
+	wget -c "${MPC_LOC}" || \
+	{
+		printf "\\tError downloading MPC-%s. Exiting.\\n" \
+		"${MPC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GMP_COMP}" ]] ; then
+	printf "\\n\\tDownloading GMP sources via wget...\\n"
+	wget -c "${GMP_LOC}" || \
+	{
+		printf "\\tError downloading GMP-%s. Exiting.\\n" \
+		"${GMP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GLIBC_COMP}" ]] ; then
+	printf "\\n\\tDownloading glibc sources via wget...\\n"
+	wget -c "${GLIBC_LOC}" || \
+	{
+		printf "\\tError downloading glibc-%s. Exiting.\\n" \
+		"${GLIBC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GPERF_COMP}" ]] ; then
+	printf "\\n\\tDownloading gperf sources via wget...\\n"
+	wget -c "${GPERF_LOC}" || \
+	{
+		printf "\\tError downloading gperf-%s. Exiting.\\n" \
+		"${GPERF_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BASH_COMP}" ]] ; then
+	printf "\\n\\tDownloading Bash sources via wget...\\n"
+	wget -c "${BASH_LOC}" || \
+	{
+		printf "\\tError downloading Bash-%s. Exiting.\\n" \
+		"${BASH_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BARF_SRCDIR}/bash${BASH_VER_CUT}-001" ]] ; then
+	# This logic will work for any BASH_PATCHLEVEL below 100.
+	# Please do not modify this section of loops.
+	#
+	# We use two different loops here so we can have
+	# wget error out in case any patch fails to download.
+	# Without this, wget would error out with usage of || with a message like:
+	# error downloading patch 0010 (which doesn't exist) as opposed to
+	# downloading 001-009, and then in a seperate loop:
+	# downloading from 010 up to BASH_PATCHLEVEL
+	#
+	# Bash level: God
+	#
+	# Strip the p out of BASH_PATCHLEVEL for sanity reasons of the loops below
+	BASH_PATCHLEVEL_CUT=$(printf ${BASH_PATCHLEVEL} | sed 's/p//g')
+
+	cd "${BARF_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s.\\n\\t%s\\n" \
+		"${BARF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	# Loop summary: Fetch patches only of which are single digit while counting up to BASH_PATCHLEVEL_CUT
+	#
+	# Explained: seq 1 "${BASH_PATCHLEVEL_CUT}" counts up from 1 to BASH_PATCHLEVEL_CUT
+	# (which is automatically generated by the stripping of "p")
+	#
+	# sed 9q grabs only the first 9 lines of output of seq 1 "${BASH_PATCHLEVEL_CUT}"
+	# 
+	# Those first 9 lines (numbers) up to BASH_PATCHLEVEL_CUT are piped to wget
+	# and then the next loop takes over and finishes the job of fetching any patches that are two digits
+	for i in $(seq 1 "${BASH_PATCHLEVEL_CUT}" | sed 9q) ; do
+		# 00 is for the patches that end with single digits
+		wget --retry-connrefused -c -t 5 -T 5 "https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-00${i}" || \
+		{
+			printf "Error downloading patch %s. Please restart the script. Exiting.\\n" \
+			"bash${BASH_VER_CUT}-00${i}" ; exit 1 ;
+		}
+	done
+
+	# Loop summary: Fetch patches only of which are two digits while counting up to BASH_PATCHLEVEL_CUT
+	#
+	# Explained: seq 1 "${BASH_PATCHLEVEL_CUT}" counts up from 1 to BASH_PATCHLEVEL_CUT
+	# (which is automatically generated by the stripping of "p")
+	#
+	# sed '/\<[0-9]\{2\}\>/!d' only looks for two digit numbers
+	#
+	# Those two digits numbers get piped to wget in incremental value up to BASH_PATCHLEVEL_CUT
+	for i in $(seq 1 "${BASH_PATCHLEVEL_CUT}" | sed '/\<[0-9]\{2\}\>/!d') ; do
+		# We only use one 0 here because the second digit is part of the patch number
+		wget --retry-connrefused -c -t 5 -T 5 "https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-0${i}" || \
+		{
+			printf "Error downloading patch %s. Please restart the script. Exiting.\\n" \
+			"bash${BASH_VER_CUT}-0${i}" ; exit 1 ;
+		}
+	done
+
+	cd "${BARF_TARDIR}" || \
+	{
+		printf "\\tError changing directory to %s.\\n\\t%s\\n" \
+		"${BARF_TARDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+	# End of 1337 Bash sk1llz 360 noscope
+fi
+
+if [[ ! -f "${BINUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading Binutils sources via wget...\\n"
+	wget -c "${BINUTILS_LOC}" || \
+	{
+		printf "\\tError downloading Binutils-%s. Exiting.\\n" \
+		"${BINUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${NCURSES_COMP}" ]] ; then
+	printf "\\n\\tDownloading ncurses sources via wget...\\n"
+	wget -c "${NCURSES_LOC}" || \
+	{
+		printf "\\tError downloading ncurses-%s. Exiting.\\n" \
+		"${NCURSES_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${ZLIB_COMP}" ]] ; then
+	printf "\\n\\tDownloading zlib sources via wget...\\n"
+	wget -c "${ZLIB_LOC}" || \
+	{
+		printf "\\tError downloading zlib-%s. Exiting.\\n" \
+		"${ZLIB_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${COREUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading Coreutils sources via wget...\\n"
+	wget -c "${COREUTILS_LOC}" || \
+	{
+		printf "\\tError downloading Coreutils-%s. Exiting.\\n" \
+		"${COREUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${UTIL_LINUX_COMP}" ]] ; then
+	printf "\\n\\tDownloading Linux sources via wget...\\n"
+	wget -c "${UTIL_LINUX_LOC}" || \
+	{
+		printf "\\tError downloading util-linux-%s. Exiting.\\n" \
+		"${UTIL_LINUX_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${FINDUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading Findutils sources via wget...\\n"
+	wget -c "${FINDUTILS_LOC}" || \
+	{
+		printf "\\tError downloading Findutils-%s. Exiting.\\n" \
+		"${FINDUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GREP_COMP}" ]] ; then
+	printf "\\n\\tDownloading Grep sources via wget...\\n"
+	wget -c "${GREP_LOC}" || \
+	{
+		printf "\\tError downloading Grep-%s. Exiting.\\n" \
+		"${GREP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GZIP_COMP}" ]] ; then
+	printf "\\n\\tDownloading Gzip sources via wget...\\n"
+	wget -c "${GZIP_LOC}" || \
+	{
+		printf "\\tError downloading Gzip-%s. Exiting.\\n" \
+		"${GZIP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${SED_COMP}" ]] ; then
+	printf "\\n\\tDownloading sed sources via wget...\\n"
+	wget -c "${SED_LOC}" || \
+	{
+		printf "\\tError downloading sed-%s. Exiting.\\n" \
+		"${SED_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GAWK_COMP}" ]] ; then
+	printf "\\n\\tDownloading gawk sources via wget...\\n"
+	wget -c "${GAWK_LOC}" || \
+	{
+		printf "\\tError downloading gawk-%s. Exiting.\\n" \
+		"${GAWK_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${PAM_COMP}" ]] ; then
+	printf "\\n\\tDownloading Linux-PAM sources via wget...\\n"
+	wget -c "${PAM_LOC}" || \
+	{
+		printf "\\tError downloading Linux-PAM-%s. Exiting.\\n" \
+		"${PAM_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${SHADOW_COMP}" ]] ; then
+	printf "\\n\\tDownloading shadow sources via wget...\\n"
+	wget -c "${SHADOW_LOC}" || \
+	{
+		printf "\\tError downloading shadow-%s. Exiting.\\n" \
+		"${SHADOW_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${OPENRC_COMP}" ]] ; then
+	printf "\\n\\tDownloading OpenRC sources via wget...\\n"
+	wget -c "${OPENRC_LOC}" || \
+	{
+		printf "\\tError downloading OpenRC-%s. Exiting.\\n" \
+		"${OPENRC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${SYSVINIT_COMP}" ]] ; then
+	printf "\\n\\tDownloading SysVinit sources via wget...\\n"
+	wget -c "${SYSVINIT_LOC}" || \
+	{
+		printf "\\tError downloading SysVinit-%s. Exiting.\\n" \
+		"${SYSVINIT_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${EUDEV_COMP}" ]] ; then
+	printf "\\n\\tDownloading eudev sources via wget...\\n"
+	wget -c "${EUDEV_LOC}" || \
+	{
+		printf "\\tError downloading eudev-%s. Exiting.\\n" \
+		"${EUDEV_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${PROCPS_NG_COMP}" ]] ; then
+	printf "\\n\\tDownloading Procps-ng sources via wget...\\n"
+	wget -c "${PROCPS_NG_LOC}" || \
+	{
+		printf "\\tError downloading Procps-ng-%s. Exiting.\\n" \
+		"${PROCPS_NG_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LIBRESSL_COMP}" ]] ; then
+	printf "\\n\\tDownloading LibreSSL sources via wget...\\n"
+	wget -c "${LIBRESSL_LOC}" || \
+	{
+		printf "\\tError downloading LibreSSL-%s. Exiting.\\n" \
+		"${LIBRESSL_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${IPROUTE2_COMP}" ]] ; then
+	printf "\\n\\tDownloading iproute2 sources via wget...\\n"
+	wget -c "${IPROUTE2_LOC}" || \
+	{
+		printf "\\tError downloading iproute2-%s. Exiting.\\n" \
+		"${IPROUTE2_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${NET_TOOLS_COMP}" ]] ; then
+	printf "\\n\\tDownloading net-tools sources via wget...\\n"
+	wget -c "${NET_TOOLS_LOC}" || \
+	{
+		printf "\\tError downloading net-tools-%s. Exiting.\\n" \
+		"${NET_TOOLS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${TAR_COMP}" ]] ; then
+	printf "\\n\\tDownloading Tar sources via wget...\\n"
+	wget -c "${TAR_LOC}" || \
+	{
+		printf "\\tError downloading Tar-%s. Exiting.\\n" \
+		"${TAR_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${IPTABLES_COMP}" ]] ; then
+	printf "\\n\\tDownloading iptables sources via wget...\\n"
+	wget -c "${IPTABLES_LOC}" || \
+	{
+		printf "\\tError downloading iptables-%s. Exiting.\\n" \
+		"${IPTABLES_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${FLEX_COMP}" ]] ; then
+	printf "\\n\\tDownloading Flex sources via wget...\\n"
+	wget -c "${FLEX_LOC}" || \
+	{
+		printf "\\tError downloading Flex-%s. Exiting.\\n" \
+		"${FLEX_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${TEXINFO_COMP}" ]] ; then
+	printf "\\n\\tDownloading Texinfo sources via wget...\\n"
+	wget -c "${TEXINFO_LOC}" || \
+	{
+		printf "\\tError downloading Texinfo-%s. Exiting.\\n" \
+		"${TEXINFO_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BISON_COMP}" ]] ; then
+	printf "\\n\\tDownloading Bison sources via wget...\\n"
+	wget -c "${BISON_LOC}" || \
+	{
+		printf "\\tError downloading Bison-%s. Exiting.\\n" \
+		"${BISON_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BC_COMP}" ]] ; then
+	printf "\\n\\tDownloading bc sources via wget...\\n"
+	wget -c "${BC_LOC}" || \
+	{
+		printf "\\tError downloading bc-%s. Exiting.\\n" \
+		"${BC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${ELFUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading elfutils sources via wget...\\n"
+	wget -c "${ELFUTILS_LOC}" || \
+	{
+		printf "\\tError downloading elfutils-%s. Exiting.\\n" \
+		"${ELFUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LIBTOOL_COMP}" ]] ; then
+	printf "\\n\\tDownloading Libtool sources via wget...\\n"
+	wget -c "${LIBTOOL_LOC}" || \
+	{
+		printf "\\tError downloading Libtool-%s. Exiting.\\n" \
+		"${LIBTOOL_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${XZ_COMP}" ]] ; then
+	printf "\\n\\tDownloading XZ Utils sources via wget...\\n"
+	wget -c "${XZ_LOC}" || \
+	{
+		printf "\\tError downloading XZ Utils-%s. Exiting.\\n" \
+		"${XZ_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LZO_COMP}" ]] ; then
+	printf "\\n\\tDownloading LZO sources via wget...\\n"
+	wget -c "${LZO_LOC}" || \
+	{
+		printf "\\tError downloading LZO-%s. Exiting.\\n" \
+		"${LZO_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LZOP_COMP}" ]] ; then
+	printf "\\n\\tDownloading lzop sources via wget...\\n"
+	wget -c "${LZOP_LOC}" || \
+	{
+		printf "\\tError downloading lzop-%s. Exiting.\\n" \
+		"${LZOP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LZ4_COMP}" ]] ; then
+	printf "\\n\\tDownloading LZ4 sources via wget...\\n"
+	wget -c "${LZ4_LOC}" || \
+	{
+		printf "\\tError downloading LZ4-%s. Exiting.\\n" \
+		"${LZ4_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${WGET_COMP}" ]] ; then
+	printf "\\n\\tDownloading Wget sources via wget...\\n"
+	wget -c "${WGET_LOC}" || \
+	{
+		printf "\\tError downloading Wget-%s. Exiting.\\n" \
+		"${WGET_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${AUTOMAKE_COMP}" ]] ; then
+	printf "\\n\\tDownloading Automake sources via wget...\\n"
+	wget -c "${AUTOMAKE_LOC}" || \
+	{
+		printf "\\tError downloading Linux-%s. Exiting.\\n" \
+		"${AUTOMAKE_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${AUTOCONF_COMP}" ]] ; then
+	printf "\\n\\tDownloading Autoconf sources via wget...\\n"
+	wget -c "${AUTOCONF_LOC}" || \
+	{
+		printf "\\tError downloading Linux-%s. Exiting.\\n" \
+		"${AUTOCONF_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${M4_COMP}" ]] ; then
+	printf "\\n\\tDownloading M4 sources via wget...\\n"
+	wget -c "${M4_LOC}" || \
+	{
+		printf "\\tError downloading M4-%s. Exiting.\\n" \
+		"${M4_VER}" ; exit 1 ;
+	}
+fi
 }
 
 #
@@ -699,7 +1139,6 @@ fi
 # Unpack any required sources
 #
 
-# TODO: IP-Tables Flex Texinfo Bison Bc Elfutils Libtool XZ-Utils lzop lz4 wget automake autoconf m4
 unpack_sources ()
 {
 	printf "\\tUnpacking any sources if needed...\\n"
@@ -707,290 +1146,303 @@ unpack_sources ()
 if [[ ! -d "${LINUX_SRCDIR}" ]] ; then
 	tar xf "${LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${LINUX_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${LINUX_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${GCC_SRCDIR}" ]] ; then
 	tar xf "${GCC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${GCC_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${GCC_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${MPFR_SRCDIR}" ]] ; then
 	tar xf "${MPFR_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${MPFR_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${MPFR_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${MPC_SRCDIR}" ]] ; then
 	tar xf "${MPC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${MPC_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${MPC_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${GMP_SRCDIR}" ]] ; then
 	tar xf "${GMP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${GMP_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${GMP_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${GLIBC_SRCDIR}" ]] ; then
 	tar xf "${GLIBC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${GLIBC_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${GLIBC_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${GPERF_SRCDIR}" ]] ; then
 	tar xf "${GPERF_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${GPERF_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${GPERF_COMP}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d "${BASH_SRCDIR}" ]] ; then
+if [[ ! -d "${BASH_PREPATCH_SRCDIR}" && ! -d "${BASH_SRCDIR}" ]] ; then
 	tar xf "${BASH_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${BASH_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${BASH_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${BINUTILS_SRCDIR}" ]] ; then
 	tar xf "${BINUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${BINUTILS_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${BINUTILS_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${NCURSES_SRCDIR}" ]] ; then
 	tar xf "${NCURSES_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${NCURSES_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${NCURSES_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${ZLIB_SRCDIR}" ]] ; then
 	tar xf "${ZLIB_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${ZLIB_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${ZLIB_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${COREUTILS_SRCDIR}" ]] ; then
 	tar xf "${COREUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${COREUTILS_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${COREUTILS_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${UTIL_LINUX_SRCDIR}" ]] ; then
 	tar xf "${UTIL_LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${UTIL_LINUX_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${UTIL_LINUX_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${FINDUTILS_SRCDIR}" ]] ; then
 	tar xf "${FINDUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${FINDUTILS_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${FINDUTILS_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${GREP_SRCDIR}" ]] ; then
 	tar xf "${GREP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${GREP_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${GREP_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${GZIP_SRCDIR}" ]] ; then
 	tar xf "${GZIP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${GZIP_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${GZIP_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${SED_SRCDIR}" ]] ; then
 	tar xf "${SED_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${SED_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${SED_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${GAWK_SRCDIR}" ]] ; then
 	tar xf "${GAWK_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${GAWK_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${GAWK_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${PAM_SRCDIR}" ]] ; then
 	tar xf "${PAM_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${PAM_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${PAM_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${SHADOW_SRCDIR}" ]] ; then
 	tar xf "${SHADOW_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${SHADOW_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${SHADOW_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${OPENRC_SRCDIR}" ]] ; then
 	tar xf "${OPENRC_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${OPENRC_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${OPENRC_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${SYSVINIT_SRCDIR}" ]] ; then
 	tar xf "${SYSVINIT_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${SYSVINIT_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${SYSVINIT_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${EUDEV_SRCDIR}" ]] ; then
 	tar xf "${EUDEV_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${EUDEV_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${EUDEV_COMP}" ; exit 1 ;
 	}
 fi
 
-if [[ ! -d "${PROCPS_SRCDIR}" ]] ; then
-	tar xf "${PROCPS_COMP}" -C "${BARF_SRCDIR}"/ || \
+if [[ ! -d "${PROCPS_NG_SRCDIR}" ]] ; then
+	tar xf "${PROCPS_NG_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${PROCPS_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${PROCPS_NG_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${LIBRESSL_SRCDIR}" ]] ; then
 	tar xf "${LIBRESSL_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${LIBRESSL_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${LIBRESSL_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${IPROUTE2_SRCDIR}" ]] ; then
 	tar xf "${IPROUTE2_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${IPROUTE2_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${IPROUTE2_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${NET_TOOLS_SRCDIR}" ]] ; then
 	tar xf "${NET_TOOLS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${NET_TOOLS_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${NET_TOOLS_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${TAR_SRCDIR}" ]] ; then
 	tar xf "${TAR_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${TAR_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${TAR_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${IPTABLES_SRCDIR}" ]] ; then
 	tar xf "${IPTABLES_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${IPTABLES_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${IPTABLES_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${FLEX_SRCDIR}" ]] ; then
 	tar xf "${FLEX_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${FLEX_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${FLEX_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${TEXINFO_SRCDIR}" ]] ; then
 	tar xf "${TEXINFO_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${TEXINFO_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${TEXINFO_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BISON_SRCDIR}" ]] ; then
+	tar xf "${BISON_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s. Exiting.\\n" "${BISON_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BC_SRCDIR}" ]] ; then
+	tar xf "${BC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s. Exiting.\\n" "${BC_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${ELFUTILS_SRCDIR}" ]] ; then
 	tar xf "${ELFUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${ELFUTILS_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${ELFUTILS_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${LIBTOOL_SRCDIR}" ]] ; then
 	tar xf "${LIBTOOL_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${LIBTOOL_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${LIBTOOL_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${XZ_SRCDIR}" ]] ; then
 	tar xf "${XZ_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${XZ_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${XZ_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${LZO_SRCDIR}" ]] ; then
 	tar xf "${LZO_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${LZO_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${LZO_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${LZOP_SRCDIR}" ]] ; then
 	tar xf "${LZOP_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${LZOP_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${LZOP_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${LZ4_SRCDIR}" ]] ; then
 	tar xf "${LZ4_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${LZ4_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${LZ4_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${WGET_SRCDIR}" ]] ; then
 	tar xf "${WGET_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${WGET_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${WGET_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${AUTOMAKE_SRCDIR}" ]] ; then
 	tar xf "${AUTOMAKE_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${AUTOMAKE_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${AUTOMAKE_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${AUTOCONF_SRCDIR}" ]] ; then
 	tar xf "${AUTOCONF_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${AUTOCONF_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${AUTOCONF_COMP}" ; exit 1 ;
 	}
 fi
 
 if [[ ! -d "${M4_SRCDIR}" ]] ; then
 	tar xf "${M4_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
-		printf "\\tError decompressing %s. Exiting.\\n" "${M4_SRCDIR}" ; exit 1 ;
+		printf "\\tError decompressing %s. Exiting.\\n" "${M4_COMP}" ; exit 1 ;
 	}
 fi
-	# Am I forgetting anything?
 }
 
 #
@@ -1014,132 +1466,151 @@ prepare_sources ()
 
 	git checkout "${UBOOT_GIT_TAG}"
 
-	printf "\\tAdjusting package source directories...\\n"
+	printf "\\tAdjusting package source directories if needed...\\n"
 
-	if [[ -d "${BARF_SRCDIR}/${OPENRC_VER}" && ! -d "${OPENRC_SRCDIR}" ]] ; then
-		mv -v "${BARF_SRCDIR}/${OPENRC_VER}" "${OPENRC_SRCDIR}" || \
+if [[ -d "${BARF_SRCDIR}/${OPENRC_VER}" && ! -d "${OPENRC_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/${OPENRC_VER}" "${OPENRC_SRCDIR}" || \
 	{
-		printf "\\tError moving eudev sources to a more reasonable location. Exiting.\\n" ; exit 1 ;
+		printf "\\tError moving eudev sources to a more reasonable location.%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
-	fi
+fi
 
-	if [[ -d "${BARF_SRCDIR}/v${EUDEV_VER}" && ! -d "${EUDEV_SRCDIR}" ]] ; then
-		mv -v "${BARF_SRCDIR}/v${EUDEV_VER}" "${EUDEV_SRCDIR}" || \
+if [[ -d "${BARF_SRCDIR}/v${EUDEV_VER}" && ! -d "${EUDEV_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/v${EUDEV_VER}" "${EUDEV_SRCDIR}" || \
 	{
-		printf "\\tError moving eudev sources to a more reasonable location. Exiting.\\n" ; exit 1 ;
+		printf "\\tError moving eudev sources to a more reasonable location.%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
-	fi
+fi
 
-	if [[ -d "${BARF_SRCDIR}/v${FLEX_VER}" && ! -d "${FLEX_SRCDIR}" ]] ; then
-		mv -v "${BARF_SRCDIR}/v${FLEX_VER}" "${FLEX_SRCDIR}" || \
+if [[ -d "${BARF_SRCDIR}/v${FLEX_VER}" && ! -d "${FLEX_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/v${FLEX_VER}" "${FLEX_SRCDIR}" || \
 	{
-		printf "\\tError moving Flex sources to a more reasonable location. Exiting.\\n" ; exit 1 ;
+		printf "\\tError moving Flex sources to a more reasonable location.%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
-	fi
+fi
 
-	if [[ -d "${BARF_SRCDIR}/v${LZ4_VER}" && ! -d "${FLEX_SRCDIR}" ]] ; then
-		mv -v "${BARF_SRCDIR}/v${LZ4_VER}" "${FLEX_SRCDIR}" || \
+if [[ -d "${BARF_SRCDIR}/v${LZ4_VER}" && ! -d "${LZ4_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/v${LZ4_VER}" "${LZ4_SRCDIR}" || \
 	{
-		printf "\\tError moving lz4 sources to a more reasonable location. Exiting.\\n" ; exit 1 ;
+		printf "\\tError moving lz4 sources to a more reasonable location.%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
-	fi
+fi
 
-	if [[ -f "${BARF_SRCDIR}/bash${BASH_VER_CUT}-012" && ! -d "${BARF_SRCDIR}/${BASH_SRCDIR}" ]] ; then
-		mv -v "${BARF_SRCDIR}/bash-${BASH_VER}" "${BASH_SRCDIR}" || \
-	{
-		printf "\\tError moving Bash sources to a more reasonable location. Exiting.\\n" ; exit 1 ;
-	}
-	fi
-
-	printf "\\tPatching Bash to %s.\\n" "${BASH_PATCHLEVEL}"
-
-	if [[ -d "${BASH_SRCDIR}" ]] ; then
-		cd "${BASH_SRCDIR}" || \
+# FIXME: Adjust logic to apply all patches up to BASH_PATCHLEVEL in incremental value
+# `for i in` loop similar to fetching bash patches
+if [[ -d "${BASH_PREPATCH_SRCDIR}" && ! -d "${BASH_SRCDIR}" && ${BASH_PATCHES_APPLIED} != 1 ]] ; then
+	cd "${BASH_PREPATCH_SRCDIR}" || \
 	{
 		printf "\\tError entering %s. Exiting.\\n" "${BASH_SRCDIR}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-001" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-001" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-001" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-002" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-002" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-002" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-003" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-003" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-003" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-004" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-004" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-004" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-005" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-005" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-005" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-006" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-006" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-006" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-007" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-007" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-007" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-008" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-008" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-008" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-009" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-009" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-009" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-010" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-010" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-010" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-011" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-011" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-011" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-		patch -p1 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-012" || \
+	patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-012" || \
 	{
-		printf "\\tError applying Bash patch from %s.%s" \
+		printf "\\tError applying Bash patch from %s.\\n\\t%s\\n" \
 		"${BARF_SRCDIR}/bash${BASH_VER_CUT}-012" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
-	else
-		printf "\\tI forgot to close this if statement LOL\\n"
-	fi
+
+	cd "${BARF_SRCDIR}" || \
+	{
+		printf "\\tError entering %s. Exiting.\\n" "${BARF_SRCDIR}" ; exit 1 ;
+	}
+
+	mv -v "${BASH_PREPATCH_SRCDIR}" "${BASH_SRCDIR}" || \
+	{
+		printf "\\tError moving Bash sources to a more reasonable location.%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	unset BASH_PATCHES_APPLIED
+	BASH_PATCHES_APPLIED=1
+	printf "\\nBASH_PATCHES_APPLIED=%s\\n" "${BASH_PATCHES_APPLIED}" >> "${BARF_CONFIG}"
+elif [[ -d "${BASH_PREPATCH_SRCDIR}" && ${BASH_PATCHES_APPLIED} == 1 ]] ; then
+	printf "\\t%s exists but BASH_PATCHES_APPLIED is set to 1. This shouldn't be.\\n" \
+	"${BASH_PREPATCH_SRCDIR}"
+	exit 1
+else
+	printf "\\tBash already patched to %s\\n" "${BASH_PATCHLEVEL}"
+fi
 }
 
 #
 # End of prepare sources
 #
 
-# TODO:
+#
+# Update sources
+#
+
 update_sources ()
 {
 if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
@@ -1147,7 +1618,7 @@ if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
 
 	cd "${CROSSTOOL_SRCDIR}" || \
 	{
-		printf "\\tError changing directory to %s.%s" \
+		printf "\\tError changing directory to %s.\\n\\t%s\\n" \
 		"${CROSSTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
@@ -1155,7 +1626,7 @@ if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
 	git checkout "${CROSSTOOL_GIT_BRANCH}"
 	git pull
 else
-	printf "\\n\\tUnexpected error: Cannot find Crosstool-NG git sources.%s" "${REPORT_BUG_EXIT}"
+	printf "\\n\\tUnexpected error: Cannot find Crosstool-NG git sources.\\n\\t%s\\n" "${REPORT_BUG_EXIT}"
 	exit 1
 fi
 
@@ -1164,14 +1635,20 @@ if [[ -d "${UBOOT_SRCDIR}" ]] ; then
 
 	cd "${UBOOT_SRCDIR}" || \
 	{
-		printf "\\tError changing directory to %s.%s" \
+		printf "\\tError changing directory to %s.\\n\\t%s\\n" \
 		"${UBOOT_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	git reset --hard HEAD
+	# Please do not arbitrarily change the branch of U-Boot!
+	#
+	# If you need to, update UBOOT_GIT_TAG to the latest stable release of U-Boot.
+	# If you want the latest development code,
+	# delete the UBOOT_GIT_TAG variable AND it's contents entirely.
+	git checkout master
 	git pull
 else
-	printf "\\n\\tUnexpected error: Cannot find U-Boot git sources.%s" "${REPORT_BUG_EXIT}"
+	printf "\\n\\tUnexpected error: Cannot find U-Boot git sources.\\n\\t%s\\n" "${REPORT_BUG_EXIT}"
 	exit 1
 fi
 }
@@ -1189,249 +1666,273 @@ verify_sources ()
 {
 	printf "\\n\\tVerifying sources...\\n"
 
+	test -d "${CROSSTOOL_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${CROSSTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${UBOOT_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${UBOOT_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
 	test -d "${LINUX_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${LINUX_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${GCC_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${GCC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${MPFR_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${MPFR_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${MPC_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${MPC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${GMP_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${GMP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${GLIBC_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${GLIBC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${GPERF_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${GPERF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${BASH_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${BASH_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${BINUTILS_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${BINUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${NCURSES_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${NCURSES_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${ZLIB_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${ZLIB_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${COREUTILS_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${COREUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${UTIL_LINUX_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${UTIL_LINUX_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${FINDUTILS_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${FINDUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${GREP_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${GREP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${GZIP_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${GZIP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${SED_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${SED_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${GAWK_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${GAWK_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${PAM_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${PAM_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${SHADOW_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${SHADOW_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${OPENRC_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${OPENRC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${SYSVINIT_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${SYSVINIT_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${EUDEV_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${EUDEV_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
-	test -d "${PROCPS_SRCDIR}" || \
+	test -d "${PROCPS_NG_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
-		"${PROCPS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${PROCPS_NG_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${LIBRESSL_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${LIBRESSL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${IPROUTE2_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${IPROUTE2_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${NET_TOOLS_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${NET_TOOLS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${TAR_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${TAR_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${IPTABLES_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${IPTABLES_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${FLEX_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${FLEX_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${TEXINFO_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${TEXINFO_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${BISON_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${BISON_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${BC_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${BC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${ELFUTILS_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${ELFUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${LIBTOOL_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${LIBTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${XZ_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${XZ_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${LZO_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${LZO_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${LZOP_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${LZOP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${LZ4_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${LZ4_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${WGET_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${WGET_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${AUTOMAKE_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${AUTOMAKE_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${AUTOCONF_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${AUTOCONF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
 	test -d "${M4_SRCDIR}" || \
 	{
-		printf "\\tUnexpected error: %s cannot be found.%s" \
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
 		"${M4_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
 	}
 
@@ -1442,20 +1943,19 @@ verify_sources ()
 # End of verify sources
 #
 
-# Why the fuck did I do this in reverse...
-# The fetch_sources function should have been done first so I can test top to bottom...
 main ()
 {
 	sanity_check
 
-	# TODO
-	# fetch_sources
+	fetch_sources
 
-	# unpack_sources
+	unpack_sources
 
-	# verify_sources
+	prepare_sources
 
-	# update_sources
+	verify_sources
+
+	update_sources
 }
 
 #
@@ -1482,12 +1982,11 @@ sleep 0
 # Execute build
 #
 
+main
+
 # TODO
 # build_crosstool
 # build_rootfs
-
-# TODO
-main
 
 exit 0
 
