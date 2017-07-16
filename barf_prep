@@ -1,0 +1,1746 @@
+#!/usr/bin/env bash
+#
+# Copyright (C) 2016 - 2017 Alec Ari <neotheuser@ymail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# printf because this is now a C program
+printf "\\n\\tWelcome to NTU's Bootable ARM64 Root Filesystem (Barf) Builder!
+\\tCopyright (C) 2016 - 2017 Alec Ari\\n"
+sleep 3
+
+# This is here to ensure we don't accidentally break something bad
+printf "\\n\\tMaking sure we are not root...\\n"
+if [[ "${EUID}" == 0 ]] ; then
+	printf "\\tThis script must not be run as root.\\n\\tExiting.\\n"
+	exit 1
+else
+	printf "\\tNot root. Good.\\n"
+fi
+
+# Environment sanity
+#
+# IMPORTANT NOTICE: (srsly)
+# STARTDIR must be an absolute path.
+# Any changes must be kept the same across all other scripts.
+# Please use care when modifying these three variables.
+unset STARTDIR
+STARTDIR="${PWD}"
+BARF_USER_CONFIG="${STARTDIR}/barf_user.config"
+BARF_INTERNAL_CONFIG="${STARTDIR}/barf_internal.config"
+# End of srs notice
+
+# If you don't have enough space in the directory where you started this script,
+# you're better off modifying the STARTDIR variable itself, located above.
+# If STARTDIR has changed, you may also need to modify the
+# BARF_USER_CONFIG and BARF_INTERNAL_CONFIG variables as well to suit your changes.
+BARF_TARDIR="${STARTDIR}/barf/tar"
+BARF_SRCDIR="${STARTDIR}/barf/src"
+BARF_ROOTFS="${STARTDIR}/barf/rootfs"
+BARF_PATCHDIR="${STARTDIR}/barf/patches"
+CROSSTOOL_SRCDIR="${STARTDIR}/barf/crosstool-ng"
+CROSSTOOL_BINDIR="${STARTDIR}/barf/cross-bin"
+
+if [[ -w "${STARTDIR}" ]] ; then
+	printf "\\n\\tUser has write permissions to %s\\n" "${STARTDIR}"
+else
+	printf "\\n\\tPlease switch to a user writeable directory, such as your home folder.\\n"
+	exit 1
+fi
+
+generate_internal_config ()
+{
+	touch "${BARF_INTERNAL_CONFIG}" || \
+	{
+		printf "\\tError generating internal config file. Exiting.\\n" ; exit 1 ;
+	}
+
+	printf "#
+# Automatically generated file; DO NOT EDIT.
+# Barf Configuration
+#
+BARF_SRCDIR=%s
+BARF_TARDIR=%s
+BARF_ROOTFS=%s
+BARF_PATCHDIR=%s
+CROSSTOOL_SRCDIR=%s
+CROSSTOOL_BINDIR=%s\\n" \
+ "${BARF_SRCDIR}" "${BARF_TARDIR}" "${BARF_ROOTFS}" "${BARF_PATCHDIR}" \
+ "${CROSSTOOL_SRCDIR}" "${CROSSTOOL_BINDIR}" &> "${BARF_INTERNAL_CONFIG}"
+}
+
+# Load internal config if present, generate if not
+printf "\\n\\tChecking for pre-existing internal config file...\\n"
+if [[ -f "${BARF_INTERNAL_CONFIG}" || -r "${BARF_INTERNAL_CONFIG}" ]] ; then
+	printf "\\tConfig file found. Loading...\\n"
+	# shellcheck source=/dev/null
+	source "${BARF_INTERNAL_CONFIG}"
+	printf "\\tLoaded.\\n"
+else
+	printf "\\tInternal config file not found or readable. Creating one.\\n"
+	generate_internal_config
+fi
+
+# Load user config file, error out if unable to find it
+printf "\\n\\tChecking for user config file...\\n"
+if [[ -f "${BARF_USER_CONFIG}" && -r "${BARF_USER_CONFIG}" ]] ; then
+	printf "\\tUser config file located. Loading...\\n"
+	# shellcheck source=/dev/null
+	source "${BARF_USER_CONFIG}"
+	printf "\\tLoaded.\\n"
+else
+	printf "\\tCritical error: User config file not found or readable.\\n\\tExiting.\\n"
+	exit 1
+fi
+
+# Variables for Barf's internal functions
+REPORT_BUG_EXIT="Please report bug to script maintainer. Exiting."
+# Strip the p out of BASH_PATCHLEVEL
+BASH_PATCHLEVEL_CUT=$(printf "%s" "${BASH_PATCHLEVEL}" | sed 's/p//g')
+
+#
+# Environmental sanity checks
+#
+
+# NOTICE: A value of 1 to the config file means true,
+# while 0 means false. This logic is similar to:
+# i.e. #define X_Y_Z 1 (for true) therefor NOT a typo
+
+sanity_check()
+{
+# Redirect stdout (1) and stderr (2) to /dev/null (keep quiet)
+# print error if type fails and exit with >0 exit status
+if [[ "${SYSTEM_OK}" == 1 ]] ; then
+	printf "\\n\\tSystem already checked for prerequisites, all ok.\\n"
+else
+	printf "\\n\\tChecking system for prerequisites...\\n"
+
+	type make > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find make. Exiting.\\n" ; exit 1 ;
+	}
+
+	type gcc > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find GCC. Exiting.\\n" ; exit 1 ;
+	}
+
+	type g++ > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find G++. Exiting.\\n" ; exit 1 ;
+	}
+
+	type ld > /dev/null 2>&1 || \
+	{
+		printf "\\tPlease install Binutils. Exiting.\\n" ; exit 1 ;
+	}
+
+	type libtool > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find libtool. Exiting.\\n" ; exit 1 ;
+	}
+
+	type wget > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find wget. Exiting.\\n" ; exit 1 ;
+	}
+
+	type git > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find git. Exiting.\\n" ; exit 1 ;
+	}
+
+	type patch > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find patch. Exiting.\\n" ; exit 1 ;
+	}
+
+	type autoconf > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find autoconf. Exiting.\\n" ; exit 1 ;
+	}
+
+	type automake > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find automake. Exiting.\\n" ; exit 1 ;
+	}
+
+	type grep > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find grep. Exiting.\\n" ; exit 1 ;
+	}
+
+	type gawk > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find gawk. Exiting.\\n" ; exit 1 ;
+	}
+
+	type sed > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find sed. Exiting.\\n" ; exit 1 ;
+	}
+
+	type m4 > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find m4. Exiting.\\n" ; exit 1 ;
+	}
+
+	type texi2any > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find texinfo. Exiting.\\n" ; exit 1 ;
+	}
+
+	type flex > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find flex. Exiting.\\n" ; exit 1 ;
+	}
+
+	type bc > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find bc. Exiting.\\n" ; exit 1 ;
+	}
+
+	type bison > /dev/null 2>&1 || \
+	{
+		printf "\\tCannot find bison. Exiting.\\n" ; exit 1 ;
+	}
+
+	printf "\\tObvious required tools found.
+\\tChecking git version...\\n"
+
+	# Lexicographical order workaround
+	#
+	# Example:
+	#
+	# ---cut here---
+	#!/usr/bin/env bash
+	#string=1.2.3
+	#string2=1.10.3
+	#printf "\\tIs %s greater than %s?\\n" "${string}" "${string2}"
+	#if [[ "${string}" > "${string2}" ]] ; then
+	#	printf "\\t%s is greater than %s.\\n" "${string}" "${string2}"
+	#else
+	#	printf "\\t%s is greater than %s.\\n" "${string2}" "${string}"
+	#fi
+	#---cut here---
+	#
+	# This method below avoids the potential problem (depending on locale)
+	# of $string being possibly greater than $string2
+	#
+	# print $3 means to print only the third set of characters
+	# as git --version includes "git version" as part of the output.
+	#
+	# cut -d. means to remove (cut) decimals
+	# cut -fX means to only select this field.
+	# In this case, the fields are separated by a decimal (-d.)
+	# but also includes output before the first decimal, hence print $3 is used
+	# to avoid the first variable (GIT_VERSION_MAJOR) being "git version X"
+	#
+	GIT_VERSION=$(git --version | gawk '{print $3}')
+	GIT_VERSION_MAJOR=$(printf "%s" "${GIT_VERSION}" | cut -d. -f1)
+	GIT_VERSION_MINOR=$(printf "%s" "${GIT_VERSION}" | cut -d. -f2)
+	GIT_VERSION_PATCH=$(printf "%s" "${GIT_VERSION}" | cut -d. -f3)
+
+	if [[ "${GIT_VERSION_MAJOR}" -ge 1 ]] ; then
+		if [[ "${GIT_VERSION_MINOR}" -ge 8 ]] ; then
+			printf "\\tGit 1.8 or newer.\\n"
+		elif [[ "${GIT_VERSION_MINOR}" -eq 7 ]] ; then
+			if [[ "${GIT_VERSION_PATCH}" -ge 10 ]] ; then
+				printf "\\tGit 1.7.10 or newer\\n"
+			elif [[ "${GIT_VERSION_PATCH}" -le 10 ]] ; then
+					printf "\\tGit needs to be 1.7.10 or newer. Exiting.\\n"
+					exit 1
+			fi
+		fi
+	else
+		printf "\\tError detecting git version.\\n\\t%s\\n" "${REPORT_BUG_EXIT}"
+	fi
+
+# Only x86/amd64 are supported
+	printf "\\n\\tDetecting kernel bitness...\\n"
+	unset ARCH_UNAME
+	ARCH_UNAME=$(uname -m)
+	if [[ "${ARCH_UNAME}" == *64 ]] ; then
+		printf "\\t64-bit\\n"
+	elif [[ "${ARCH_UNAME}" == *86 ]] ; then
+		printf "\\t32-bit\\n"
+	else
+		printf "\\tUnable to detect bitness.
+\\tOnly x86 and amd64 platforms supported.\\n"
+		exit 1
+	fi
+	unset SYSTEM_OK
+	SYSTEM_OK="1"
+	printf "\\nARCH_UNAME=%s\\n" "${ARCH_UNAME}" >> "${BARF_INTERNAL_CONFIG}"
+	printf "\\nSYSTEM_OK=%s" "${SYSTEM_OK}" >> "${BARF_INTERNAL_CONFIG}"
+fi
+
+# Definitely not the best way to check, but it works
+if [[ "${GENTOO_PASS}" == 1 || "${GENERIC_TRUE}" == 1 ]] ; then
+	printf "\\n\\tSystem already passed compiler check.\\n"
+else
+	unset GENTOO_PASS
+	unset GENERIC_TRUE
+	printf "\\n\\tIs this a Gentoo system?\\n"
+	if [[ $(ls /etc/env.d/gcc/config*) ]] ; then
+		printf "\\tYes. Testing the build environment...\\n"
+		GCC_ENV_CONF=$(cat /etc/env.d/gcc/config*)
+		MAKE_PROFILE_TEST=$(ls -la /etc/portage/make.profile)
+		if [[ "${GCC_ENV_CONF}" == *vanilla || "${MAKE_PROFILE_TEST}" != *hardened* ]] ; then
+			printf "\\tGood, vanilla toolchain.\\n"
+			GENTOO_PASS="1"
+			printf "\\nGENTOO_PASS=%s\\n" "${GENTOO_PASS}" >> "${BARF_INTERNAL_CONFIG}"
+		elif [[ "${MAKE_PROFILE_TEST}" == *hardened* ]] ; then
+			printf "\\tNot vanilla GCC, this may cause a GCC build failure
+\\tas -fPIC and potentially other CFLAGS are known to issues.
+\\tYou may comment the following line out at your own risk. If you do,
+\\tplease report your success, your feedback is greatly appreciated.\\n"
+			exit 1
+		else
+			printf "\\tError detecting the build environment.\\n\\t%s\\n" "${REPORT_BUG_EXIT}"
+			exit 1
+		fi
+	else
+		printf "\\tNo, assuming working toolchain.\\n"
+		GENERIC_TRUE="1"
+		printf "\\nGENERIC_TRUE=%s\\n" "${GENERIC_TRUE}" >> "${BARF_INTERNAL_CONFIG}"
+	fi
+fi
+
+	printf "\\n\\tPerforming basic sanity checks on %s\\n" "${BARF_USER_CONFIG}"
+if [[ "${JOBS}" -ge 0 ]] ; then
+		printf "\\tNumber of build jobs is defined and greater than 0.\\n"
+else
+		printf "\\tNumber of build jobs is invalid or undefined. Exiting.\\n"
+		exit 1
+fi
+	printf "\\tAssuming everything else is ok.\\n"
+
+	printf "\\n\\tPerforming basic sanity checks on %s\\n" "${BARF_INTERNAL_CONFIG}"
+if [[ -n "${BARF_ROOTFS}" ]] ; then
+		printf "\\tInstallation directory is defined.\\n"
+else
+		printf "\\tInstallation directory is invalid or undefined. Exiting.\\n"
+		exit 1
+fi
+	printf "\\tAssuming everything else is ok.\\n"
+}
+
+#
+# End of sanity checks
+#
+
+# Most likely a FIXME here from the looks of it to properly detect
+# if a Ct-NG build has already started and ended before completing successfully.
+#
+# If Crosstool-NG is already built, do not clean
+# If interrupted, always do a fresh restart
+if [[ -d "${CROSSTOOL_BINDIR}" && "${CROSSTOOL_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
+	printf "\\n\\t%s found.
+\\tCrosstool-NG build hung up unexpectedly.\\n
+\\tDeleting %s in 10 seconds.\\n
+\\tThis action cannot be undone!
+\\tPress Control+C to cancel.
+\\t10.\\n" "${CROSSTOOL_BINDIR}" "${CROSSTOOL_BINDIR}"
+	sleep 1
+	printf "\\t9.\\n"
+	sleep 1
+	printf "\\t8.\\n"
+	sleep 1
+	printf "\\t7.\\n"
+	sleep 1
+	printf "\\t6.\\n"
+	sleep 1
+	printf "\\t5.\\n"
+	sleep 1
+	printf "\\t4.\\n"
+	sleep 1
+	printf "\\t3.\\n"
+	sleep 1
+	printf "\\t2.\\n"
+	sleep 1
+	printf "\\t1.\\n"
+	sleep 1
+	printf "\\tCleaning up...\\n\\n"
+	rm -rf "${CROSSTOOL_BINDIR}"
+	printf "\\tFinished. Please restart the script.\\n"
+	exit 0
+elif [[ -d "${CROSSTOOL_BINDIR}" && "${CROSSTOOL_COMPLETE}" == 1 ]] ; then
+	printf "\\n\\tCrosstool-NG already built.\\n"
+fi
+
+# If Root filesystem is already built, do not clean
+# If interrupted, always do a fresh restart
+if [[ -d "${BARF_ROOTFS}" && "${BARF_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
+	printf "\\n\\t%s found.
+\\tRoot filesystem build hung up unexpectedly.\\n
+\\tDeleting %s in 10 seconds.\\n
+\\tThis action cannot be undone!
+\\tPress Control+C to cancel.
+\\t10.\\n" "${BARF_ROOTFS}" "${BARF_ROOTFS}"
+	sleep 1
+	printf "\\t9.\\n"
+	sleep 1
+	printf "\\t8.\\n"
+	sleep 1
+	printf "\\t7.\\n"
+	sleep 1
+	printf "\\t6.\\n"
+	sleep 1
+	printf "\\t5.\\n"
+	sleep 1
+	printf "\\t4.\\n"
+	sleep 1
+	printf "\\t3.\\n"
+	sleep 1
+	printf "\\t2.\\n"
+	sleep 1
+	printf "\\t1.\\n"
+	sleep 1
+	printf "\\tCleaning up...\\n\\n"
+	rm -rf "${BARF_ROOTFS}"
+	printf "\\tFinished. Please restart the script.\\n"
+	exit 0
+elif [[ -d "${BARF_ROOTFS}" && "${ROOTFS_COMPLETE}" == 1 ]] ; then
+	printf "\\n\\tRoot filesystem already built.\\n
+\\t%s and\\n\\t%s must be manually removed to proceed.
+\\tNothing to do. Exiting.\\n" "${BARF_ROOTDIR}" "${BARF_INTERNAL_CONFIG}"
+	exit 0
+fi
+
+init_barf_srcdir ()
+{
+	printf "\\n\\tCreating source work directories...\\n"
+
+	mkdir -p "${BARF_SRCDIR}" || \
+	{
+		printf "\\tFailed to create %s Exiting.\\n" \
+		"${BARF_SRCDIR}" ; exit 1 ;
+	}
+
+}
+
+printf "\\n\\tChecking if %s exists...\\n" "${BARF_SRCDIR}"
+if [[ -d "${BARF_SRCDIR}" ]] ; then
+	printf "\\tIt does.\\n"
+else
+	printf "\\tIt does not, must be your first rodeo.\\n
+\\tWelcome! I really hope this script works for you.
+\\tPlease report any bugs to the author of this program.\\n"
+	init_barf_srcdir
+fi
+
+#
+# Fetch any required sources
+#
+
+fetch_git_sources ()
+{
+	cd "${BARF_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${BARF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	printf "\\n\\tFetching any required sources if needed...\\n"
+
+if [[ ! -d "${CROSSTOOL_SRCDIR}" ]] ; then
+	printf "\\n\\tFetching Crosstool-NG via git...\\n"
+	# You may notice this [@] thing throughout this script.
+	# $@ expands all positional parameters as separate words.
+	# Example:
+	#
+	# ---cut here---
+	#!/usr/bin/env bash
+	#ARRAY=(favorite kind of cereal=fruit loops)
+	#echo ${ARRAY}
+	#echo ${ARRAY[@]}
+	#---cut here---
+	#
+	# Without the use of [@], echo will only return favorite
+	#
+	# When we add [@], echo spits out $ARRAY exactly as it is written. It basically makes
+	# handling the use of arrays much more "exact" even though you could use quotes to
+	# solve THAT problem. However, this is where things can get tricky:
+	#
+	#---cut here---
+	#!/usr/bin/env bash
+	#ARRAY=("favorite kind of cereal=fruit loops")
+	#VAR1=$(echo "${ARRAY}" | sed 's/fruit loops//')
+	#SECOND_ARRAY=("${ARRAY}" "${VAR1}")
+	#echo "${SECOND_ARRAY}"
+	#echo "${SECOND_ARRAY[@]}"
+	#---cut here---
+	#
+	# Here we have ARRAY written entirely in quotes and VAR1 which pulls out the fruit loops of
+	# ARRAY with the use of a simple sed command.
+	#
+	# VAR1 can't be entirely in quotes, otherwise Bash would try to run the following as a
+	# single command all at once:
+	# "echo ${ARRAY} | sed 's/fruit loops//'"
+	# This of course is an impossible task. The same would go if you tried to run this WITH quotes:
+	# "echo fruit | loops"
+	# This would return:
+	# bash: echo fruit | loops: command not found
+	#
+	# So, we've established that VAR1 can't be double quoted. The solution to this is
+	# using [@] to expand SECOND_ARRAY into separate words, meaning that
+	# SECOND_ARRAY=("${ARRAY}" "${VAR1}") will essentially be expanded from:
+	# echo $ARRAY
+	# Which would result in:
+	# favorite kind of cereal=fruit loops
+	# Into:
+	# echo $ARRAY
+	# echo $VAR1 | sed 's/fruit loops//'
+	# Giving us the following output, including the intended behavior of VAR1:
+	# favorite kind of cereal=fruit loops favorite kind of cereal=
+	#
+	# End of $@ tutorial
+
+	git clone "${CROSSTOOL_GIT_OPTS[@]}" "${CROSSTOOL_GIT}" "${CROSSTOOL_SRCDIR}" || \
+	{
+		printf "\\tError fetching Crosstool-NG. Exiting.\\n" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${UBOOT_SRCDIR}" ]] ; then
+	printf "\\n\\tFetching U-Boot via git...\\n"
+	git clone "${UBOOT_GIT}" "${UBOOT_SRCDIR}" || \
+	{
+		printf "\\tError fetching U-Boot. Exiting.\\n" ; exit 1 ;
+	}
+fi
+}
+
+fetch_tar_sources ()
+{
+	cd "${BARF_TARDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${BARF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+if [[ ! -f "${LINUX_COMP}" ]] ; then
+	printf "\\n\\tDownloading Linux sources via wget...\\n"
+	wget -c "${LINUX_LOC}" || \
+	{
+		printf "\\tError downloading Linux-%s. Exiting.\\n" "${LINUX_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GCC_COMP}" ]] ; then
+	printf "\\n\\tDownloading GCC sources via wget...\\n"
+	wget -c "${GCC_LOC}" || \
+	{
+		printf "\\tError downloading GCC-%s. Exiting.\\n" "${GCC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${MPFR_COMP}" ]] ; then
+	printf "\\n\\tDownloading MPFR sources via wget...\\n"
+	wget -c "${MPFR_LOC}" || \
+	{
+		printf "\\tError downloading MPFR-%s. Exiting.\\n" "${MPFR_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${MPC_COMP}" ]] ; then
+	printf "\\n\\tDownloading MPC sources via wget...\\n"
+	wget -c "${MPC_LOC}" || \
+	{
+		printf "\\tError downloading MPC-%s. Exiting.\\n" "${MPC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GMP_COMP}" ]] ; then
+	printf "\\n\\tDownloading GMP sources via wget...\\n"
+	wget -c "${GMP_LOC}" || \
+	{
+		printf "\\tError downloading GMP-%s. Exiting.\\n" "${GMP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GLIBC_COMP}" ]] ; then
+	printf "\\n\\tDownloading glibc sources via wget...\\n"
+	wget -c "${GLIBC_LOC}" || \
+	{
+		printf "\\tError downloading glibc-%s. Exiting.\\n" "${GLIBC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GPERF_COMP}" ]] ; then
+	printf "\\n\\tDownloading gperf sources via wget...\\n"
+	wget -c "${GPERF_LOC}" || \
+	{
+		printf "\\tError downloading gperf-%s. Exiting.\\n" "${GPERF_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BASH_COMP}" ]] ; then
+	printf "\\n\\tDownloading Bash sources via wget...\\n"
+	wget -c "${BASH_LOC}" || \
+	{
+		printf "\\tError downloading Bash-%s. Exiting.\\n" "${BASH_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BINUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading Binutils sources via wget...\\n"
+	wget -c "${BINUTILS_LOC}" || \
+	{
+		printf "\\tError downloading Binutils-%s. Exiting.\\n" "${BINUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${NCURSES_COMP}" ]] ; then
+	printf "\\n\\tDownloading ncurses sources via wget...\\n"
+	wget -c "${NCURSES_LOC}" || \
+	{
+		printf "\\tError downloading ncurses-%s. Exiting.\\n" "${NCURSES_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${ZLIB_COMP}" ]] ; then
+	printf "\\n\\tDownloading zlib sources via wget...\\n"
+	wget -c "${ZLIB_LOC}" || \
+	{
+		printf "\\tError downloading zlib-%s. Exiting.\\n" "${ZLIB_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${COREUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading Coreutils sources via wget...\\n"
+	wget -c "${COREUTILS_LOC}" || \
+	{
+		printf "\\tError downloading Coreutils-%s. Exiting.\\n" "${COREUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${UTIL_LINUX_COMP}" ]] ; then
+	printf "\\n\\tDownloading util-linux sources via wget...\\n"
+	wget -c "${UTIL_LINUX_LOC}" || \
+	{
+		printf "\\tError downloading util-linux-%s. Exiting.\\n" "${UTIL_LINUX_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${FINDUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading Findutils sources via wget...\\n"
+	wget -c "${FINDUTILS_LOC}" || \
+	{
+		printf "\\tError downloading Findutils-%s. Exiting.\\n" "${FINDUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GREP_COMP}" ]] ; then
+	printf "\\n\\tDownloading Grep sources via wget...\\n"
+	wget -c "${GREP_LOC}" || \
+	{
+		printf "\\tError downloading Grep-%s. Exiting.\\n" "${GREP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GZIP_COMP}" ]] ; then
+	printf "\\n\\tDownloading Gzip sources via wget...\\n"
+	wget -c "${GZIP_LOC}" || \
+	{
+		printf "\\tError downloading Gzip-%s. Exiting.\\n" "${GZIP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${SED_COMP}" ]] ; then
+	printf "\\n\\tDownloading sed sources via wget...\\n"
+	wget -c "${SED_LOC}" || \
+	{
+		printf "\\tError downloading sed-%s. Exiting.\\n" "${SED_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${GAWK_COMP}" ]] ; then
+	printf "\\n\\tDownloading gawk sources via wget...\\n"
+	wget -c "${GAWK_LOC}" || \
+	{
+		printf "\\tError downloading gawk-%s. Exiting.\\n" "${GAWK_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${PAM_COMP}" ]] ; then
+	printf "\\n\\tDownloading Linux-PAM sources via wget...\\n"
+	wget -c "${PAM_LOC}" || \
+	{
+		printf "\\tError downloading Linux-PAM-%s. Exiting.\\n" "${PAM_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${SHADOW_COMP}" ]] ; then
+	printf "\\n\\tDownloading shadow sources via wget...\\n"
+	wget -c "${SHADOW_LOC}" || \
+	{
+		printf "\\tError downloading shadow-%s. Exiting.\\n" "${SHADOW_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${OPENRC_COMP}" ]] ; then
+	printf "\\n\\tDownloading OpenRC sources via wget...\\n"
+	wget -c "${OPENRC_LOC}" || \
+	{
+		printf "\\tError downloading OpenRC-%s. Exiting.\\n" "${OPENRC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${SYSVINIT_COMP}" ]] ; then
+	printf "\\n\\tDownloading SysVinit sources via wget...\\n"
+	wget -c "${SYSVINIT_LOC}" || \
+	{
+		printf "\\tError downloading SysVinit-%s. Exiting.\\n" "${SYSVINIT_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${EUDEV_COMP}" ]] ; then
+	printf "\\n\\tDownloading eudev sources via wget...\\n"
+	wget -c "${EUDEV_LOC}" || \
+	{
+		printf "\\tError downloading eudev-%s. Exiting.\\n" "${EUDEV_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${PROCPS_NG_COMP}" ]] ; then
+	printf "\\n\\tDownloading Procps-ng sources via wget...\\n"
+	wget -c "${PROCPS_NG_LOC}" || \
+	{
+		printf "\\tError downloading Procps-ng-%s. Exiting.\\n" "${PROCPS_NG_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LIBRESSL_COMP}" ]] ; then
+	printf "\\n\\tDownloading LibreSSL sources via wget...\\n"
+	wget -c "${LIBRESSL_LOC}" || \
+	{
+		printf "\\tError downloading LibreSSL-%s. Exiting.\\n" "${LIBRESSL_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${IPROUTE2_COMP}" ]] ; then
+	printf "\\n\\tDownloading iproute2 sources via wget...\\n"
+	wget -c "${IPROUTE2_LOC}" || \
+	{
+		printf "\\tError downloading iproute2-%s. Exiting.\\n" "${IPROUTE2_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${NET_TOOLS_COMP}" ]] ; then
+	printf "\\n\\tDownloading net-tools sources via wget...\\n"
+	wget -c "${NET_TOOLS_LOC}" || \
+	{
+		printf "\\tError downloading net-tools-%s. Exiting.\\n" "${NET_TOOLS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${TAR_COMP}" ]] ; then
+	printf "\\n\\tDownloading Tar sources via wget...\\n"
+	wget -c "${TAR_LOC}" || \
+	{
+		printf "\\tError downloading Tar-%s. Exiting.\\n" "${TAR_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${IPTABLES_COMP}" ]] ; then
+	printf "\\n\\tDownloading iptables sources via wget...\\n"
+	wget -c "${IPTABLES_LOC}" || \
+	{
+		printf "\\tError downloading iptables-%s. Exiting.\\n" "${IPTABLES_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${FLEX_COMP}" ]] ; then
+	printf "\\n\\tDownloading Flex sources via wget...\\n"
+	wget -c "${FLEX_LOC}" || \
+	{
+		printf "\\tError downloading Flex-%s. Exiting.\\n" "${FLEX_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${TEXINFO_COMP}" ]] ; then
+	printf "\\n\\tDownloading Texinfo sources via wget...\\n"
+	wget -c "${TEXINFO_LOC}" || \
+	{
+		printf "\\tError downloading Texinfo-%s. Exiting.\\n" "${TEXINFO_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BISON_COMP}" ]] ; then
+	printf "\\n\\tDownloading Bison sources via wget...\\n"
+	wget -c "${BISON_LOC}" || \
+	{
+		printf "\\tError downloading Bison-%s. Exiting.\\n" "${BISON_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${BC_COMP}" ]] ; then
+	printf "\\n\\tDownloading bc sources via wget...\\n"
+	wget -c "${BC_LOC}" || \
+	{
+		printf "\\tError downloading bc-%s. Exiting.\\n" "${BC_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${ELFUTILS_COMP}" ]] ; then
+	printf "\\n\\tDownloading elfutils sources via wget...\\n"
+	wget -c "${ELFUTILS_LOC}" || \
+	{
+		printf "\\tError downloading elfutils-%s. Exiting.\\n" "${ELFUTILS_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LIBTOOL_COMP}" ]] ; then
+	printf "\\n\\tDownloading Libtool sources via wget...\\n"
+	wget -c "${LIBTOOL_LOC}" || \
+	{
+		printf "\\tError downloading Libtool-%s. Exiting.\\n" "${LIBTOOL_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${XZ_COMP}" ]] ; then
+	printf "\\n\\tDownloading XZ Utils sources via wget...\\n"
+	wget -c "${XZ_LOC}" || \
+	{
+		printf "\\tError downloading XZ Utils-%s. Exiting.\\n" "${XZ_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LZO_COMP}" ]] ; then
+	printf "\\n\\tDownloading LZO sources via wget...\\n"
+	wget -c "${LZO_LOC}" || \
+	{
+		printf "\\tError downloading LZO-%s. Exiting.\\n" "${LZO_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LZOP_COMP}" ]] ; then
+	printf "\\n\\tDownloading lzop sources via wget...\\n"
+	wget -c "${LZOP_LOC}" || \
+	{
+		printf "\\tError downloading lzop-%s. Exiting.\\n" "${LZOP_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${LZ4_COMP}" ]] ; then
+	printf "\\n\\tDownloading LZ4 sources via wget...\\n"
+	wget -c "${LZ4_LOC}" || \
+	{
+		printf "\\tError downloading LZ4-%s. Exiting.\\n" "${LZ4_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${WGET_COMP}" ]] ; then
+	printf "\\n\\tDownloading Wget sources via wget...\\n"
+	wget -c "${WGET_LOC}" || \
+	{
+		printf "\\tError downloading Wget-%s. Exiting.\\n" "${WGET_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${AUTOMAKE_COMP}" ]] ; then
+	printf "\\n\\tDownloading Automake sources via wget...\\n"
+	wget -c "${AUTOMAKE_LOC}" || \
+	{
+		printf "\\tError downloading Linux-%s. Exiting.\\n" "${AUTOMAKE_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${AUTOCONF_COMP}" ]] ; then
+	printf "\\n\\tDownloading Autoconf sources via wget...\\n"
+	wget -c "${AUTOCONF_LOC}" || \
+	{
+		printf "\\tError downloading Linux-%s. Exiting.\\n" "${AUTOCONF_VER}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -f "${M4_COMP}" ]] ; then
+	printf "\\n\\tDownloading M4 sources via wget...\\n"
+	wget -c "${M4_LOC}" || \
+	{
+		printf "\\tError downloading M4-%s. Exiting.\\n" "${M4_VER}" ; exit 1 ;
+	}
+fi
+}
+
+#
+# End of fetch sources
+#
+
+#
+# Fetch any required patches
+#
+
+fetch_patches ()
+{
+if [[ ! -f "${BARF_SRCDIR}/bash${BASH_VER_CUT}-001" ]] ; then
+	# This logic will work for any BASH_PATCHLEVEL below 100.
+	# Please do not modify this section of loops.
+	#
+	# We use two different loops here so we can have wget error out in case any patch
+	# fails to download. Without this, wget would error out with a message like:
+	# error downloading patch 0010 (which doesn't exist) as opposed to downloading 001-009,
+	# and then in a seperate loop: downloading from 010 up to BASH_PATCHLEVEL
+	#
+	# Bash level: God
+
+	cd "${BARF_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${BARF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	# Loop summary: Fetch patches only of which are single digit while
+	# counting up to BASH_PATCHLEVEL_CUT
+	#
+	# Explained: seq 1 "${BASH_PATCHLEVEL_CUT}" counts up from 1 to BASH_PATCHLEVEL_CUT
+	# (which is automatically generated by the stripping of "p")
+	#
+	# sed 9q grabs only the first 9 lines of output of seq 1 "${BASH_PATCHLEVEL_CUT}"
+	#
+	# Those first 9 lines (numbers) up to BASH_PATCHLEVEL_CUT are piped to wget
+	# and then the next loop takes over and finishes the job of fetching any patches that are two digits
+	for i in $(seq 1 "${BASH_PATCHLEVEL_CUT}" | sed 9q) ; do
+		# 00 is for the patches that end with single digits
+		wget --retry-connrefused -c -t 5 -T 5 \
+		"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-00${i}" || \
+		{
+			printf "Error downloading patch %s\\n\\tPlease restart the script. Exiting.\\n" \
+			"bash${BASH_VER_CUT}-00${i}" ; exit 1 ;
+		}
+	done
+
+	# Loop summary: Fetch patches only of which are two digits while counting up to BASH_PATCHLEVEL_CUT
+	#
+	# Explained: seq 1 "${BASH_PATCHLEVEL_CUT}" counts up from 1 to BASH_PATCHLEVEL_CUT
+	# (which is automatically generated by the stripping of "p")
+	#
+	# sed '/\<[0-9]\{2\}\>/!d' only looks for two digit numbers
+	#
+	# Those two digits numbers get piped to wget in incremental value up to BASH_PATCHLEVEL_CUT
+	for i in $(seq 1 "${BASH_PATCHLEVEL_CUT}" | sed '/\<[0-9]\{2\}\>/!d') ; do
+		# We only use one 0 here because the second digit is part of the patch number
+		wget --retry-connrefused -c -t 5 -T 5 \
+		"https://ftp.gnu.org/gnu/bash/bash-${BASH_VER}-patches/bash${BASH_VER_CUT}-0${i}" || \
+		{
+			printf "Error downloading patch %s\\n\\tPlease restart the script. Exiting.\\n" \
+			"bash${BASH_VER_CUT}-0${i}" ; exit 1 ;
+		}
+	done
+
+	cd "${BARF_TARDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${BARF_TARDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+	# End of 1337 Bash sk1llz 360 noscope
+fi
+}
+
+#
+# End of fetch patches
+#
+
+#
+# Unpack any required sources
+#
+
+unpack_sources ()
+{
+	printf "\\tUnpacking any sources if needed...\\n"
+
+if [[ ! -d "${LINUX_SRCDIR}" ]] ; then
+	tar xf "${LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${LINUX_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GCC_SRCDIR}" ]] ; then
+	tar xf "${GCC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${GCC_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${MPFR_SRCDIR}" ]] ; then
+	tar xf "${MPFR_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${MPFR_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${MPC_SRCDIR}" ]] ; then
+	tar xf "${MPC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${MPC_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GMP_SRCDIR}" ]] ; then
+	tar xf "${GMP_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${GMP_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GLIBC_SRCDIR}" ]] ; then
+	tar xf "${GLIBC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${GLIBC_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GPERF_SRCDIR}" ]] ; then
+	tar xf "${GPERF_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${GPERF_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BASH_PREPATCH_SRCDIR}" && ! -d "${BASH_SRCDIR}" ]] ; then
+	tar xf "${BASH_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${BASH_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BINUTILS_SRCDIR}" ]] ; then
+	tar xf "${BINUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${BINUTILS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${NCURSES_SRCDIR}" ]] ; then
+	tar xf "${NCURSES_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${NCURSES_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${ZLIB_SRCDIR}" ]] ; then
+	tar xf "${ZLIB_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${ZLIB_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${COREUTILS_SRCDIR}" ]] ; then
+	tar xf "${COREUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${COREUTILS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${UTIL_LINUX_SRCDIR}" ]] ; then
+	tar xf "${UTIL_LINUX_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${UTIL_LINUX_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${FINDUTILS_SRCDIR}" ]] ; then
+	tar xf "${FINDUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${FINDUTILS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GREP_SRCDIR}" ]] ; then
+	tar xf "${GREP_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${GREP_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GZIP_SRCDIR}" ]] ; then
+	tar xf "${GZIP_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${GZIP_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${SED_SRCDIR}" ]] ; then
+	tar xf "${SED_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${SED_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GAWK_SRCDIR}" ]] ; then
+	tar xf "${GAWK_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${GAWK_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${PAM_SRCDIR}" ]] ; then
+	tar xf "${PAM_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${PAM_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${SHADOW_SRCDIR}" ]] ; then
+	tar xf "${SHADOW_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${SHADOW_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${OPENRC_SRCDIR}" ]] ; then
+	tar xf "${OPENRC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${OPENRC_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${SYSVINIT_SRCDIR}" ]] ; then
+	tar xf "${SYSVINIT_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${SYSVINIT_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${EUDEV_SRCDIR}" ]] ; then
+	tar xf "${EUDEV_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${EUDEV_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${PROCPS_NG_SRCDIR}" ]] ; then
+	tar xf "${PROCPS_NG_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${PROCPS_NG_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${LIBRESSL_SRCDIR}" ]] ; then
+	tar xf "${LIBRESSL_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${LIBRESSL_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${IPROUTE2_SRCDIR}" ]] ; then
+	tar xf "${IPROUTE2_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${IPROUTE2_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${NET_TOOLS_SRCDIR}" ]] ; then
+	tar xf "${NET_TOOLS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${NET_TOOLS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${TAR_SRCDIR}" ]] ; then
+	tar xf "${TAR_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${TAR_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${IPTABLES_SRCDIR}" ]] ; then
+	tar xf "${IPTABLES_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${IPTABLES_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${FLEX_SRCDIR}" ]] ; then
+	tar xf "${FLEX_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${FLEX_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${TEXINFO_SRCDIR}" ]] ; then
+	tar xf "${TEXINFO_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${TEXINFO_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BISON_SRCDIR}" ]] ; then
+	tar xf "${BISON_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${BISON_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BC_SRCDIR}" ]] ; then
+	tar xf "${BC_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${BC_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${ELFUTILS_SRCDIR}" ]] ; then
+	tar xf "${ELFUTILS_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${ELFUTILS_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${LIBTOOL_SRCDIR}" ]] ; then
+	tar xf "${LIBTOOL_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${LIBTOOL_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${XZ_SRCDIR}" ]] ; then
+	tar xf "${XZ_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${XZ_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${LZO_SRCDIR}" ]] ; then
+	tar xf "${LZO_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${LZO_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${LZOP_SRCDIR}" ]] ; then
+	tar xf "${LZOP_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${LZOP_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${LZ4_SRCDIR}" ]] ; then
+	tar xf "${LZ4_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${LZ4_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${WGET_SRCDIR}" ]] ; then
+	tar xf "${WGET_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${WGET_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${AUTOMAKE_SRCDIR}" ]] ; then
+	tar xf "${AUTOMAKE_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${AUTOMAKE_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${AUTOCONF_SRCDIR}" ]] ; then
+	tar xf "${AUTOCONF_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${AUTOCONF_COMP}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${M4_SRCDIR}" ]] ; then
+	tar xf "${M4_COMP}" -C "${BARF_SRCDIR}"/ || \
+	{
+		printf "\\tError decompressing %s Exiting.\\n" "${M4_COMP}" ; exit 1 ;
+	}
+fi
+}
+
+#
+# End of unpack sources
+#
+
+#
+# Prepare sources (rename source directories, apply patches, etc)
+#
+
+prepare_sources ()
+{
+	printf "\\n\\tPreparing source directories...\\n"
+
+	printf "\\tAdjusting package source directories if needed...\\n"
+
+if [[ -d "${BARF_SRCDIR}/${OPENRC_VER}" && ! -d "${OPENRC_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/${OPENRC_VER}" "${OPENRC_SRCDIR}" || \
+	{
+		printf "\\tError moving eudev sources to a more reasonable location.\\n\\t%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ -d "${BARF_SRCDIR}/v${EUDEV_VER}" && ! -d "${EUDEV_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/v${EUDEV_VER}" "${EUDEV_SRCDIR}" || \
+	{
+		printf "\\tError moving eudev sources to a more reasonable location.\\n\\t%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ -d "${BARF_SRCDIR}/v${FLEX_VER}" && ! -d "${FLEX_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/v${FLEX_VER}" "${FLEX_SRCDIR}" || \
+	{
+		printf "\\tError moving Flex sources to a more reasonable location.\\n\\t%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ -d "${BARF_SRCDIR}/v${LZ4_VER}" && ! -d "${LZ4_SRCDIR}" ]] ; then
+	mv -v "${BARF_SRCDIR}/v${LZ4_VER}" "${LZ4_SRCDIR}" || \
+	{
+		printf "\\tError moving lz4 sources to a more reasonable location.\\n\\t%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ -d "${BASH_PREPATCH_SRCDIR}" && ! -d "${BASH_SRCDIR}" && "${BASH_PATCHES_APPLIED}" != 1 ]] ; then
+	cd "${BASH_PREPATCH_SRCDIR}" || \
+	{
+		printf "\\tError entering %s\\n\\tExiting.\\n" \
+		"${BASH_SRCDIR}" ; exit 1 ;
+	}
+
+	# Single digit patches
+	for i in $(seq 1 "${BASH_PATCHLEVEL_CUT}" | sed 9q) ; do
+		# 00 is for the patches that end with single digits
+		patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-00${i}" || \
+		{
+			printf "Error applying patch %s\\n\\t%s\\n" \
+			"bash${BASH_VER_CUT}-00${i}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+		}
+	done
+
+	# Two digit patches
+	for i in $(seq 1 "${BASH_PATCHLEVEL_CUT}" | sed '/\<[0-9]\{2\}\>/!d') ; do
+		patch -p0 < "${BARF_SRCDIR}/bash${BASH_VER_CUT}-0${i}" || \
+		{
+			printf "Error applying patch %s\\n\\t%s\\n" \
+			"bash${BASH_VER_CUT}-0${i}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+		}
+	done
+
+	cd "${BARF_SRCDIR}" || \
+	{
+		printf "\\tError entering %s\\n\\tExiting.\\n" \
+		"${BARF_SRCDIR}" ; exit 1 ;
+	}
+
+	mv -v "${BASH_PREPATCH_SRCDIR}" "${BASH_SRCDIR}" || \
+	{
+		printf "\\tError moving Bash sources to a more reasonable location.\\n\\t%s\\n" \
+		"${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	unset BASH_PATCHES_APPLIED
+	BASH_PATCHES_APPLIED="1"
+	printf "\\nBASH_PATCHES_APPLIED=%s\\n" "${BASH_PATCHES_APPLIED}" >> "${BARF_INTERNAL_CONFIG}"
+elif [[ -d "${BASH_PREPATCH_SRCDIR}" && "${BASH_PATCHES_APPLIED}" == 1 ]] ; then
+	printf "\\t%s exists but BASH_PATCHES_APPLIED is set to 1. This shouldn't be.\\n\\tExiting.\\n" \
+	"${BASH_PREPATCH_SRCDIR}"
+	exit 1
+else
+	printf "\\tBash already patched to %s\\n" "${BASH_PATCHLEVEL}"
+fi
+}
+
+#
+# End of prepare sources
+#
+
+#
+# Update git sources
+#
+
+update_git_sources ()
+{
+if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
+	printf "\\n\\tUpdating Crosstool-NG...\\n"
+
+	cd "${CROSSTOOL_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${CROSSTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	git reset --hard HEAD
+	git checkout "${CROSSTOOL_GIT_BRANCH[@]}"
+	git pull
+else
+	printf "\\n\\tUnexpected error: Cannot find Crosstool-NG source directory.\\n\\t%s\\n" \
+	"${REPORT_BUG_EXIT}"
+	exit 1
+fi
+
+if [[ -d "${UBOOT_SRCDIR}" ]] ; then
+	printf "\\n\\tUpdating U-Boot...\\n"
+
+	cd "${UBOOT_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${UBOOT_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	# Please do not arbitrarily change the branch of U-Boot!
+	# If you need to, update UBOOT_GIT_TAG in your user config file to the latest
+	# stable release of U-Boot.
+	#
+	# If you want the latest development code,
+	# delete the UBOOT_GIT_TAG variable AND it's contents entirely from
+	# inside your user config file. The below commands will handle the rest for you.
+
+	# Always update the U-Boot git repo then either switch back to UBOOT_GIT_TAG
+	# or stay on the latest master branch if UBOOT_GIT_TAG is undefined.
+	git reset --hard HEAD
+	git checkout master
+	git pull
+
+	if [[ -n "${UBOOT_GIT_TAG}" ]] ; then
+		printf "\\tSwitching U-Boot to tag %s...\\n" "${UBOOT_GIT_TAG}"
+		git checkout "${UBOOT_GIT_TAG[@]}"
+	fi
+else
+	printf "\\n\\tUnexpected error: Cannot find U-Boot source directory.\\n\\t%s\\n" \
+	"${REPORT_BUG_EXIT}"
+	exit 1
+fi
+}
+
+#
+# End of update sources
+#
+
+#
+# Verify sources
+#
+
+# Testing to make sure the source directories exist is important,
+# but making sure the archives can pass a checksum is importanter.
+# Perhaps add a .DIGEST file here?
+# Work out the logic so it only does a checksum of the stock versions of packages
+# as provided in the default barf_user.config file. Shouldn't be too difficult for me.
+verify_sources ()
+{
+	printf "\\n\\tVerifying sources...\\n"
+
+	test -d "${CROSSTOOL_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${CROSSTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${UBOOT_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${UBOOT_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${LINUX_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${LINUX_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${GCC_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${GCC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${MPFR_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${MPFR_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${MPC_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${MPC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${GMP_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${GMP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${GLIBC_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${GLIBC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${GPERF_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${GPERF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${BASH_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${BASH_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${BINUTILS_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${BINUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${NCURSES_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${NCURSES_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${ZLIB_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${ZLIB_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${COREUTILS_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${COREUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${UTIL_LINUX_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${UTIL_LINUX_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${FINDUTILS_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${FINDUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${GREP_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${GREP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${GZIP_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${GZIP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${SED_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${SED_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${GAWK_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${GAWK_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${PAM_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${PAM_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${SHADOW_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${SHADOW_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${OPENRC_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${OPENRC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${SYSVINIT_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${SYSVINIT_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${EUDEV_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${EUDEV_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${PROCPS_NG_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${PROCPS_NG_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${LIBRESSL_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${LIBRESSL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${IPROUTE2_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${IPROUTE2_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${NET_TOOLS_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${NET_TOOLS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${TAR_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${TAR_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${IPTABLES_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${IPTABLES_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${FLEX_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${FLEX_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${TEXINFO_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${TEXINFO_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${BISON_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${BISON_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${BC_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${BC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${ELFUTILS_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${ELFUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${LIBTOOL_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${LIBTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${XZ_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${XZ_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${LZO_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${LZO_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${LZOP_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${LZOP_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${LZ4_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${LZ4_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${WGET_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${WGET_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${AUTOMAKE_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${AUTOMAKE_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${AUTOCONF_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${AUTOCONF_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	test -d "${M4_SRCDIR}" || \
+	{
+		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
+		"${M4_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	printf "\\tAll sources verified.\\n"
+}
+
+#
+# End of verify sources
+#
+
+main ()
+{
+	sanity_check
+
+	fetch_git_sources
+
+	fetch_tar_sources
+
+	fetch_patches
+
+	unpack_sources
+
+	prepare_sources
+
+	update_git_sources
+
+	verify_sources
+}
+
+#
+# Execute all of the main functions
+#
+
+main
+
+exit 0
+
+#EOF
