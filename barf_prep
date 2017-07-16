@@ -1716,6 +1716,82 @@ verify_sources ()
 # End of verify sources
 #
 
+#
+# Custom packages
+#
+
+# We use sleep 0 because these are empty functions. Remove sleep 0 if no longer empty.
+fetch_custom_tar ()
+{
+# Fetch your custom package sources here
+# These variables come from the options you added in barf_user.config
+# cd "${BARF_TARDIR}"
+#if [[ ! -f "${YOURPKG_COMP}" ]] ; then
+#	printf "\\n\\tDownloading yourpkg sources via wget...\\n"
+#	wget -c "${YOURPKG_LOC}" || \
+#	{
+#		printf "\\tError downloading yourpkg-%s. Exiting.\\n" "${YOURPKG_VER}" ; exit 1 ;
+#	}
+#fi
+# etc.
+sleep 0
+}
+
+unpack_custom_tar ()
+{
+# Unpack your custom packages here
+# These variables come from the options you added in barf_user.config
+#if [[ ! -d "${YOURPKG_SRCDIR}" ]] ; then
+#	tar xf "${YOURPKG_COMP}" -C "${BARF_SRCDIR}"/ || \
+#	{
+#		printf "\\tError decompressing %s Exiting.\\n" "${YOURPKG_COMP}" ; exit 1 ;
+#	}
+#fi
+# etc.
+sleep 0
+}
+
+fetch_custom_git ()
+{
+# cd "${BARF_SRCDIR}"
+#if [[ ! -d "${CUSTOMGIT_SRCDIR}" ]] ; then
+#	printf "\\n\\tFetching custom_gitname via git...\\n"
+#	git clone "${CUSTOM_GIT}" "${CUSTOMGIT_SRCDIR}" || \
+#	{
+#		printf "\\tError fetching custom_gitname. Exiting.\\n" ; exit 1 ;
+#	}
+#fi
+# etc.
+sleep 0
+}
+
+update_custom_git ()
+{
+#if [[ -d "${CUSTOMGIT_SRCDIR}" ]] ; then
+#	printf "\\n\\tUpdating custom_gitname...\\n"
+#
+#	cd "${CUSTOMGIT_SRCDIR}" || \
+#	{
+#		printf "\\tError changing directory to custom_gitname\\n\\tExiting.\\n" \
+#		"${CUSTOMGIT_SRCDIR}" ; exit 1 ;
+#	}
+#
+#	git reset --hard HEAD
+#	# Optionally:
+#	git checkout "${CUSTOM_GIT_BRANCH[@]}"
+#	git pull
+#else
+#	printf "\\n\\tUnexpected error: Cannot find custom_gitname source directory.\\n\\tExiting.\\n"
+#	exit 1
+#fi
+# etc.
+sleep 0
+}
+
+#
+# End of custom packages
+#
+
 main ()
 {
 	sanity_check
@@ -1735,11 +1811,24 @@ main ()
 	verify_sources
 }
 
+custom_main ()
+{
+	fetch_custom_tar
+
+	unpack_custom_tar
+
+	fetch_custom_git
+
+	update_custom_git
+}
+
 #
 # Execute all of the main functions
 #
 
 main
+
+custom_main
 
 exit 0
 
