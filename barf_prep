@@ -1011,6 +1011,8 @@ if [[ ! -d "${GPERF_SRCDIR}" ]] ; then
 	}
 fi
 
+# shellcheck disable=SC2153
+# sourced from user config
 if [[ ! -d "${BASH_PREPATCH_SRCDIR}" && ! -d "${BASH_SRCDIR}" ]] ; then
 	tar xf "${BASH_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
@@ -1151,6 +1153,8 @@ if [[ ! -d "${NET_TOOLS_SRCDIR}" ]] ; then
 	}
 fi
 
+# shellcheck disable=SC2153
+# sourced from user config
 if [[ ! -d "${TAR_SRCDIR}" ]] ; then
 	tar xf "${TAR_COMP}" -C "${BARF_SRCDIR}"/ || \
 	{
