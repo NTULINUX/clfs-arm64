@@ -318,8 +318,8 @@ else
 	fi
 fi
 
-	printf "\\n\\tPerforming basic sanity checks on %s\\n" "${BARF_USER_CONFIG}"
-if [[ "${JOBS}" -ge 0 ]] ; then
+	printf "\\n\\tPerforming basic sanity checks on:\n\t%s\\n" "${BARF_USER_CONFIG}"
+if [[ "${JOBS}" -gt 0 ]] ; then
 		printf "\\tNumber of build jobs is defined and greater than 0.\\n"
 else
 		printf "\\tNumber of build jobs is invalid or undefined. Exiting.\\n"
@@ -327,7 +327,7 @@ else
 fi
 	printf "\\tAssuming everything else is ok.\\n"
 
-	printf "\\n\\tPerforming basic sanity checks on %s\\n" "${BARF_INTERNAL_CONFIG}"
+	printf "\\n\\tPerforming basic sanity checks on:\n\t%s\\n" "${BARF_INTERNAL_CONFIG}"
 if [[ -n "${BARF_ROOTFS}" ]] ; then
 		printf "\\tInstallation directory is defined.\\n"
 else
@@ -419,9 +419,9 @@ elif [[ -d "${BARF_ROOTFS}" && "${ROOTFS_COMPLETE}" == 1 ]] ; then
 	exit 0
 fi
 
-init_barf_srcdir ()
+init_barf_dirs ()
 {
-	printf "\\n\\tCreating source work directories...\\n"
+	printf "\\n\\tCreating source directory...\\n"
 
 	mkdir -p "${BARF_SRCDIR}" || \
 	{
@@ -429,16 +429,23 @@ init_barf_srcdir ()
 		"${BARF_SRCDIR}" ; exit 1 ;
 	}
 
+	printf "\\n\\tCreating directory to store tarballs...\\n"
+
+	mkdir -p "${BARF_TARDIR}" || \
+	{
+		printf "\\tFailed to create %s Exiting.\\n" \
+		"${BARF_TARDIR}" ; exit 1 ;
+	}
 }
 
-printf "\\n\\tChecking if %s exists...\\n" "${BARF_SRCDIR}"
-if [[ -d "${BARF_SRCDIR}" ]] ; then
-	printf "\\tIt does.\\n"
+printf "\\n\\tChecking if %s and \\n\\t%s exist...\\n" "${BARF_SRCDIR}" "${BARF_TARDIR}"
+if [[ -d "${BARF_SRCDIR}" && -d "${BARF_TARDIR}" ]] ; then
+	printf "\\tThey do.\\n"
 else
-	printf "\\tIt does not, must be your first rodeo.\\n
+	printf "\\tThey do not, must be your first rodeo.\\n
 \\tWelcome! I really hope this script works for you.
 \\tPlease report any bugs to the author of this program.\\n"
-	init_barf_srcdir
+	init_barf_dirs
 fi
 
 #
