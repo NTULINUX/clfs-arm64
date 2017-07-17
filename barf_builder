@@ -59,17 +59,17 @@ fi
 # TODO
 build_crosstool()
 {
-sleep 0
 # make crosstool-ng config ; cd into crosstool-ng ;
 # ./configure --local-prefix ; ./ct-ng oldconfig? ;
 # ./ct-ng build
+sleep 0
 }
 
 # TODO
 build_rootfs()
 {
-sleep 0
 # build the kernel and all the sources here
+sleep 0
 }
 
 #
@@ -78,15 +78,16 @@ sleep 0
 
 build_custom()
 {
-sleep 0
 # Add the build instructions for your custom packages here
-# Simple example:
+# Example:
 # `cd` into the PKG_SRCDIR as you specified in your user config file
 # ./configure \
+# --prefix="${BARF_ROOTFS}"
 # --any-options \
 # --you-need
 # make -j"${JOBS}"
 # make install
+sleep 0
 }
 
 #
