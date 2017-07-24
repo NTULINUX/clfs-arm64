@@ -1,4 +1,4 @@
 - Add checksum verification of source archives
-- Complete barf_builder (toolchain and rootfs)
+- Complete barf_builder (QEMU chroot playground -> rootfs)
 - Test it before bragging to your friends how brilliant you are with Bash
 - Stop being a smartass

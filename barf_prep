@@ -41,16 +41,14 @@ BARF_USER_CONFIG="${STARTDIR}/barf_user.config"
 BARF_INTERNAL_CONFIG="${STARTDIR}/barf_internal.config"
 # End of srs notice
 
-# If you don't have enough space in the directory where you started this script,
+# If you don't have enough space in the default directory (directory of the script)
 # you're better off modifying the STARTDIR variable itself, located above.
-# If STARTDIR has changed, you may also need to modify the
-# BARF_USER_CONFIG and BARF_INTERNAL_CONFIG variables as well to suit your changes.
+# Again, it must be an absolute path.
 BARF_TARDIR="${STARTDIR}/barf/tar"
 BARF_SRCDIR="${STARTDIR}/barf/src"
 BARF_ROOTFS="${STARTDIR}/barf/rootfs"
 BARF_PATCHDIR="${STARTDIR}/barf/patches"
-CROSSTOOL_SRCDIR="${STARTDIR}/barf/crosstool-ng"
-CROSSTOOL_BINDIR="${STARTDIR}/barf/cross-bin"
+BARF_CROSS_BINDIR="${STARTDIR}/barf/barf_cross_bin"
 
 if [[ -w "${STARTDIR}" ]] ; then
 	printf "\\n\\tUser has write permissions to %s\\n" "${STARTDIR}"
@@ -70,14 +68,13 @@ generate_internal_config ()
 # Automatically generated file; DO NOT EDIT.
 # Barf Configuration
 #
+
 BARF_SRCDIR=%s
 BARF_TARDIR=%s
 BARF_ROOTFS=%s
 BARF_PATCHDIR=%s
-CROSSTOOL_SRCDIR=%s
-CROSSTOOL_BINDIR=%s\\n" \
- "${BARF_SRCDIR}" "${BARF_TARDIR}" "${BARF_ROOTFS}" "${BARF_PATCHDIR}" \
- "${CROSSTOOL_SRCDIR}" "${CROSSTOOL_BINDIR}" &> "${BARF_INTERNAL_CONFIG}"
+BARF_CROSS_BINDIR=%s\\n" \
+ "${BARF_SRCDIR}" "${BARF_TARDIR}" "${BARF_ROOTFS}" "${BARF_PATCHDIR}" "${BARF_CROSS_BINDIR}" &> "${BARF_INTERNAL_CONFIG}"
 }
 
 # Load internal config if present, generate if not
@@ -341,84 +338,6 @@ fi
 # End of sanity checks
 #
 
-# Most likely a FIXME here from the looks of it to properly detect
-# if a Ct-NG build has already started and ended before completing successfully.
-#
-# If Crosstool-NG is already built, do not clean
-# If interrupted, always do a fresh restart
-if [[ -d "${CROSSTOOL_BINDIR}" && "${CROSSTOOL_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
-	printf "\\n\\t%s found.
-\\tCrosstool-NG build hung up unexpectedly.\\n
-\\tDeleting %s in 10 seconds.\\n
-\\tThis action cannot be undone!
-\\tPress Control+C to cancel.
-\\t10.\\n" "${CROSSTOOL_BINDIR}" "${CROSSTOOL_BINDIR}"
-	sleep 1
-	printf "\\t9.\\n"
-	sleep 1
-	printf "\\t8.\\n"
-	sleep 1
-	printf "\\t7.\\n"
-	sleep 1
-	printf "\\t6.\\n"
-	sleep 1
-	printf "\\t5.\\n"
-	sleep 1
-	printf "\\t4.\\n"
-	sleep 1
-	printf "\\t3.\\n"
-	sleep 1
-	printf "\\t2.\\n"
-	sleep 1
-	printf "\\t1.\\n"
-	sleep 1
-	printf "\\tCleaning up...\\n\\n"
-	rm -rf "${CROSSTOOL_BINDIR}"
-	printf "\\tFinished. Please restart the script.\\n"
-	exit 0
-elif [[ -d "${CROSSTOOL_BINDIR}" && "${CROSSTOOL_COMPLETE}" == 1 ]] ; then
-	printf "\\n\\tCrosstool-NG already built.\\n"
-fi
-
-# If Root filesystem is already built, do not clean
-# If interrupted, always do a fresh restart
-if [[ -d "${BARF_ROOTFS}" && "${BARF_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
-	printf "\\n\\t%s found.
-\\tRoot filesystem build hung up unexpectedly.\\n
-\\tDeleting %s in 10 seconds.\\n
-\\tThis action cannot be undone!
-\\tPress Control+C to cancel.
-\\t10.\\n" "${BARF_ROOTFS}" "${BARF_ROOTFS}"
-	sleep 1
-	printf "\\t9.\\n"
-	sleep 1
-	printf "\\t8.\\n"
-	sleep 1
-	printf "\\t7.\\n"
-	sleep 1
-	printf "\\t6.\\n"
-	sleep 1
-	printf "\\t5.\\n"
-	sleep 1
-	printf "\\t4.\\n"
-	sleep 1
-	printf "\\t3.\\n"
-	sleep 1
-	printf "\\t2.\\n"
-	sleep 1
-	printf "\\t1.\\n"
-	sleep 1
-	printf "\\tCleaning up...\\n\\n"
-	rm -rf "${BARF_ROOTFS}"
-	printf "\\tFinished. Please restart the script.\\n"
-	exit 0
-elif [[ -d "${BARF_ROOTFS}" && "${ROOTFS_COMPLETE}" == 1 ]] ; then
-	printf "\\n\\tRoot filesystem already built.\\n
-\\t%s and\\n\\t%s must be manually removed to proceed.
-\\tNothing to do. Exiting.\\n" "${BARF_ROOTDIR}" "${BARF_INTERNAL_CONFIG}"
-	exit 0
-fi
-
 init_barf_dirs ()
 {
 	printf "\\n\\tCreating source directory...\\n"
@@ -461,65 +380,6 @@ fetch_git_sources ()
 	}
 
 	printf "\\n\\tFetching any required sources if needed...\\n"
-
-if [[ ! -d "${CROSSTOOL_SRCDIR}" ]] ; then
-	printf "\\n\\tFetching Crosstool-NG via git...\\n"
-	# You may notice this [@] thing throughout this script.
-	# $@ expands all positional parameters as separate words.
-	# Example:
-	#
-	# ---cut here---
-	#!/usr/bin/env bash
-	#ARRAY=(favorite kind of cereal=fruit loops)
-	#echo ${ARRAY}
-	#echo ${ARRAY[@]}
-	#---cut here---
-	#
-	# Without the use of [@], echo will only return favorite
-	#
-	# When we add [@], echo spits out $ARRAY exactly as it is written. It basically makes
-	# handling the use of arrays much more "exact" even though you could use quotes to
-	# solve THAT problem. However, this is where things can get tricky:
-	#
-	#---cut here---
-	#!/usr/bin/env bash
-	#ARRAY=("favorite kind of cereal=fruit loops")
-	#VAR1=$(echo "${ARRAY}" | sed 's/fruit loops//')
-	#SECOND_ARRAY=("${ARRAY}" "${VAR1}")
-	#echo "${SECOND_ARRAY}"
-	#echo "${SECOND_ARRAY[@]}"
-	#---cut here---
-	#
-	# Here we have ARRAY written entirely in quotes and VAR1 which pulls out the fruit loops of
-	# ARRAY with the use of a simple sed command.
-	#
-	# VAR1 can't be entirely in quotes, otherwise Bash would try to run the following as a
-	# single command all at once:
-	# "echo ${ARRAY} | sed 's/fruit loops//'"
-	# This of course is an impossible task. The same would go if you tried to run this WITH quotes:
-	# "echo fruit | loops"
-	# This would return:
-	# bash: echo fruit | loops: command not found
-	#
-	# So, we've established that VAR1 can't be double quoted. The solution to this is
-	# using [@] to expand SECOND_ARRAY into separate words, meaning that
-	# SECOND_ARRAY=("${ARRAY}" "${VAR1}") will essentially be expanded from:
-	# echo $ARRAY
-	# Which would result in:
-	# favorite kind of cereal=fruit loops
-	# Into:
-	# echo $ARRAY
-	# echo $VAR1 | sed 's/fruit loops//'
-	# Giving us the following output, including the intended behavior of VAR1:
-	# favorite kind of cereal=fruit loops favorite kind of cereal=
-	#
-	# End of $@ tutorial
-
-	git clone "${CROSSTOOL_GIT_OPTS[@]}" "${CROSSTOOL_GIT}" "${CROSSTOOL_SRCDIR}" || \
-	{
-		printf "\\tError fetching Crosstool-NG. Exiting.\\n" ; exit 1 ;
-	}
-fi
 
 if [[ ! -d "${UBOOT_SRCDIR}" ]] ; then
 	printf "\\n\\tFetching U-Boot via git...\\n"
@@ -1381,24 +1241,6 @@ fi
 
 update_git_sources ()
 {
-if [[ -d "${CROSSTOOL_SRCDIR}" ]] ; then
-	printf "\\n\\tUpdating Crosstool-NG...\\n"
-
-	cd "${CROSSTOOL_SRCDIR}" || \
-	{
-		printf "\\tError changing directory to %s\\n\\t%s\\n" \
-		"${CROSSTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
-	}
-
-	git reset --hard HEAD
-	git checkout "${CROSSTOOL_GIT_BRANCH[@]}"
-	git pull
-else
-	printf "\\n\\tUnexpected error: Cannot find Crosstool-NG source directory.\\n\\t%s\\n" \
-	"${REPORT_BUG_EXIT}"
-	exit 1
-fi
-
 if [[ -d "${UBOOT_SRCDIR}" ]] ; then
 	printf "\\n\\tUpdating U-Boot...\\n"
 
@@ -1449,12 +1291,6 @@ fi
 verify_sources ()
 {
 	printf "\\n\\tVerifying sources...\\n"
-
-	test -d "${CROSSTOOL_SRCDIR}" || \
-	{
-		printf "\\tUnexpected error: %s cannot be found.\\n\\t%s\\n" \
-		"${CROSSTOOL_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
-	}
 
 	test -d "${UBOOT_SRCDIR}" || \
 	{
@@ -1840,6 +1676,15 @@ custom_main ()
 main
 
 custom_main
+
+printf "\\n\\tPrep complete! You may now execute barf_builder.
+\\tExiting with successful exit status...\\n"
+
+if [[ -z "${BARF_PREP_COMPLETE}" ]] ; then
+	printf "\\n\\tSaving success to %s...\\n" ${BARF_INTERNAL_CONFIG}
+	BARF_PREP_COMPLETE="1"
+	printf "\\nBARF_PREP_COMPLETE=%s\\n" "${BARF_PREP_COMPLETE}" >> ${BARF_INTERNAL_CONFIG}
+fi
 
 exit 0
 

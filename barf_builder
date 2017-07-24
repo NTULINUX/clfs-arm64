@@ -16,8 +16,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # TODO
-# Build Crosstool-NG
 # Compile root filesystem
+
+# This is here to ensure we don't accidentally break something bad
+printf "\\n\\tMaking sure we are not root...\\n"
+if [[ "${EUID}" == 0 ]] ; then
+	printf "\\tThis script must not be run as root.\\n\\tExiting.\\n"
+	exit 1
+else
+	printf "\\tNot root. Good.\\n"
+fi
+
 
 # Environment sanity
 #
@@ -29,7 +38,12 @@ unset STARTDIR
 STARTDIR="${PWD}"
 BARF_USER_CONFIG="${STARTDIR}/barf_user.config"
 BARF_INTERNAL_CONFIG="${STARTDIR}/barf_internal.config"
+BARF_CROSS_BINDIR="${STARTDIR}/barf/barf_cross_bin"
 # End of srs notice
+
+unset CFLAGS
+unset CXXFLAGS
+unset LDFLAGS
 
 # Load sauce for the JoJ so we can build HoH SiS
 # This avoids us from having to set variables all over again.
@@ -52,24 +66,909 @@ else
 	exit 1
 fi
 
-#
-# This is where the building starts
-#
+if [[ -n "${BARF_PREP_COMPLETE}" && "${BARF_PREP_COMPLETE}" -eq 1 ]] ; then
+	printf "\\tBARF_PREP_COMPLETE defined and equal to 1.\\n"
+else
+	printf "\\tBARF_PREP_COMPLETE not defined or invalid.
+\\tDid you run barf_prep yet? Exiting...\\n"
+	exit 1
+fi
 
-# TODO
-build_crosstool()
+# If cross compiler is already built, do not clean
+# If interrupted, always do a fresh restart
+if [[ -d "${BARF_CROSS_BINDIR}" && "${BARF_CROSS_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
+	printf "\\n\\t%s found.
+\\tCross toolchain build hung up unexpectedly.\\n
+\\tDeleting %s in 10 seconds.\\n
+\\tThis action cannot be undone!
+\\tPress Control+C to cancel.
+\\t10.\\n" "${BARF_CROSS_BINDIR}" "${BARF_CROSS_BINDIR}"
+	sleep 1
+	printf "\\t9.\\n"
+	sleep 1
+	printf "\\t8.\\n"
+	sleep 1
+	printf "\\t7.\\n"
+	sleep 1
+	printf "\\t6.\\n"
+	sleep 1
+	printf "\\t5.\\n"
+	sleep 1
+	printf "\\t4.\\n"
+	sleep 1
+	printf "\\t3.\\n"
+	sleep 1
+	printf "\\t2.\\n"
+	sleep 1
+	printf "\\t1.\\n"
+	sleep 1
+	printf "\\tCleaning up...\\n\\n"
+	rm -rf "${BARF_CROSS_BINDIR}"
+	printf "\\tFinished. Please restart the script.\\n"
+	exit 0
+elif [[ -d "${BARF_CROSS_BINDIR}" && "${BARF_CROSS_COMPLETE}" == 1 ]] ; then
+	printf "\\n\\tCross toolchain already built.\\n"
+fi
+
+# If Root filesystem is already built, do not clean
+# If interrupted, always do a fresh restart
+if [[ -d "${BARF_ROOTFS}" && "${BARF_COMPLETE}" != 1 && "${DEVELOPER_MODE}" != 1 ]] ; then
+	printf "\\n\\t%s found.
+\\tRoot filesystem build hung up unexpectedly.\\n
+\\tDeleting %s in 10 seconds.\\n
+\\tThis action cannot be undone!
+\\tPress Control+C to cancel.
+\\t10.\\n" "${BARF_ROOTFS}" "${BARF_ROOTFS}"
+	sleep 1
+	printf "\\t9.\\n"
+	sleep 1
+	printf "\\t8.\\n"
+	sleep 1
+	printf "\\t7.\\n"
+	sleep 1
+	printf "\\t6.\\n"
+	sleep 1
+	printf "\\t5.\\n"
+	sleep 1
+	printf "\\t4.\\n"
+	sleep 1
+	printf "\\t3.\\n"
+	sleep 1
+	printf "\\t2.\\n"
+	sleep 1
+	printf "\\t1.\\n"
+	sleep 1
+	printf "\\tCleaning up...\\n\\n"
+	rm -rf "${BARF_ROOTFS}"
+	printf "\\tFinished. Please restart the script.\\n"
+	exit 0
+elif [[ -d "${BARF_ROOTFS}" && "${BARF_ROOTFS_COMPLETE}" == 1 ]] ; then
+	printf "\\n\\tRoot filesystem already built.\\n
+\\tNothing to do. Exiting.\\n"
+	exit 0
+fi
+
+prepare_binutils ()
 {
-# make crosstool-ng config ; cd into crosstool-ng ;
-# ./configure --local-prefix ; ./ct-ng oldconfig? ;
-# ./ct-ng build
-sleep 0
+	printf "\\n\\tCopying required libraries to Binutils if needed.\\n"
+if [[ ! -d "${BINUTILS_SRCDIR}"/gmp ]] ; then
+	printf "\\tCopying GMP to Binutils...\\n"
+
+	cp -pr "${GMP_SRCDIR}" "${BINUTILS_SRCDIR}"/gmp || \
+	{
+		printf "\\tError copying GMP to Binutils.%s\\n" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BINUTILS_SRCDIR}"/mpfr ]] ; then
+	printf "\\tCopying MPFR to Binutils...\\n"
+
+	cp -pr "${MPFR_SRCDIR}" "${BINUTILS_SRCDIR}"/mpfr || \
+	{
+		printf "\\tError copying MPFR to Binutils.%s\\n" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BINUTILS_SRCDIR}"/mpc ]] ; then
+	printf "\\tCopying MPC to Binutils...\\n"
+
+	cp -pr "${MPC_SRCDIR}" "${BINUTILS_SRCDIR}"/mpc || \
+	{
+		printf "\\tError copying MPC to Binutils.%s\\n" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
 }
 
-# TODO
-build_rootfs()
+prepare_gcc ()
 {
-# build the kernel and all the sources here
-sleep 0
+	printf "\\n\\tCopying required libraries to GCC if needed.\\n"
+if [[ ! -d "${GCC_SRCDIR}"/gmp ]] ; then
+	printf "\\tCopying GMP to GCC...\\n"
+
+	cp -pr "${GMP_SRCDIR}" "${GCC_SRCDIR}"/gmp || \
+	{
+		printf "\\tError copying GMP to GCC.%s\\n" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GCC_SRCDIR}"/mpfr ]] ; then
+	printf "\\tCopying MPFR to GCC...\\n"
+
+	cp -pr "${MPFR_SRCDIR}" "${GCC_SRCDIR}"/mpfr || \
+	{
+		printf "\\tError copying MPFR to GCC.%s\\n" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${GCC_SRCDIR}"/mpc ]] ; then
+	printf "\\tCopying MPC to GCC...\\n"
+
+	cp -pr "${MPC_SRCDIR}" "${GCC_SRCDIR}"/mpc || \
+	{
+		printf "\\tError copying MPC to GCC.%s\\n" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+}
+
+#
+# Cross toolchain
+#
+
+if [[ ! -d "${BARF_CROSS_BINDIR}" ]] ; then
+	mkdir -p "${BARF_CROSS_BINDIR}" || \
+	{
+		printf "\\tFailed to create %s Exiting.\\n" \
+		"${BARF_CROSS_BINDIR}" ; exit 1 ;
+	}
+fi
+
+if [[ ! -d "${BARF_CROSS_BINDIR}"/sysroot/usr/include ]] ; then
+	mkdir -p "${BARF_CROSS_BINDIR}"/sysroot/usr/include || \
+	{
+		printf "\\tFailed to create %s Exiting.\\n" \
+		"${BARF_CROSS_BINDIR}"/sysroot/usr/include ; exit 1 ;
+	}
+fi
+
+# Cross toolchain build order:
+# Kernel headers, stage 1, stage 2, final
+# Stage 1: Binutils -> GCC -> glibc (Initial static build, minimal options)
+# Stage 2: Binutils -> GCC (More features such as LTO and threads)
+# Final: glibc -> Binutils -> GCC (Stage 2 + shared build, plus:
+# Additional security features, Gold linker, some testsuites, and -Werror)
+#
+# This (long) process really makes sure the toolchain is not fragile as we
+# use it for everything we can, outside the QEMU chroot.
+barf_toolchain()
+{
+	#
+	# Kernel headers
+	#
+	printf "\\n\\tInstalling kernel headers...\\n"
+
+	cd "${LINUX_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${LINUX_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make mrproper
+
+if [[ ! -d "${LINUX_SRCDIR}"/DESTDIR ]] ; then
+	mkdir -p "${LINUX_SRCDIR}"/DESTDIR
+else
+	rm -rf "${LINUX_SRCDIR}"/DESTDIR/*
+fi
+
+	ARCH="${BARF_TARGET_ARCH}" make headers_check
+	ARCH="${BARF_TARGET_ARCH}" make INSTALL_HDR_PATH="${LINUX_SRCDIR}/DESTDIR" headers_install
+
+	mkdir -p "${BARF_CROSS_BINDIR}"/include || \
+	{
+		printf "\\tError creating %s. Exiting.\\n" \
+		"${BARF_CROSS_BINDIR}"/include ; exit 1 ;
+	}
+
+	cp -pr "${LINUX_SRCDIR}"/DESTDIR/include/* "${BARF_CROSS_BINDIR}"/sysroot/usr/include/ || \
+	{
+		printf "\\tError installing kernel headers. Exiting.\\n" ; exit 1 ;
+	}
+	#
+	# End of kernel headers
+	#
+
+#
+# Begin stage 1
+#
+
+	#
+	# Binutils stage 1
+	#
+	prepare_binutils
+
+	printf "\\tBuilding %s stage 1...\\n" "Binutils-${BINUTILS_VER}"
+if [[ -d "${BINUTILS_SRCDIR}"/build ]] ; then
+
+	cd "${BINUTILS_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${BINUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${BINUTILS_SRCDIR}"/build/*
+else
+	mkdir -p "${BINUTILS_SRCDIR}"/build || \
+	{
+		printf "\\tError creating %s.%s" \
+		"${BINUTILS_SRCDIR}"/build "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	cd "${BINUTILS_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${BINUTILS_SRCDIR}"/build "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_HOST}" \
+	--target="${BARF_TARGET}" \
+	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--enable-ld=yes \
+	--enable-gold=no \
+	--disable-bootstrap \
+	--disable-werror \
+	--disable-shared \
+	--disable-lto \
+	--disable-plugins \
+	--disable-nls \
+	--disable-multilib \
+	--disable-sim \
+	--disable-gdb || \
+	{
+		printf "\\tError configuring %s stage 1. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s stage 1. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s stage 1. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+	#
+	# End of Binutils stage 1
+	#
+
+# Set the path now that we have Binutils installed
+BARF_ORIG_PATH="${PATH}"
+BARF_NEW_PATH="${BARF_ORIG_PATH}:${BARF_CROSS_BINDIR}/bin"
+PATH="${BARF_NEW_PATH}"
+
+	#
+	# GCC stage 1
+	#
+	prepare_gcc
+
+	printf "\\tBuilding %s stage 1...\\n" "GCC-${GCC_VER}"
+if [[ -d "${GCC_SRCDIR}"/build ]] ; then
+
+	cd "${GCC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GCC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${GCC_SRCDIR}"/build/*
+else
+	mkdir -p "${GCC_SRCDIR}"/build || \
+	{
+		printf "\\tError creating %s.%s" \
+		"${GCC_SRCDIR}"/build "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	cd "${GCC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GCC_SRCDIR}"/build "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--with-newlib \
+	--with-cpu="${BARF_TARGET_CPU}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_HOST}" \
+	--target="${BARF_TARGET}" \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--with-local-prefix="${BARF_CROSS_BINDIR}"/sysroot \
+	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--enable-__cxa_atexit \
+	--with-isl=no \
+	--with-cloog=no \
+	--enable-linker-build-id \
+	--enable-languages=c \
+	--enable-threads=no \
+	--without-headers \
+	--disable-libatomic \
+	--disable-bootstrap \
+	--disable-werror \
+	--disable-shared \
+	--disable-lto \
+	--disable-libsanitizer \
+	--disable-libssp \
+	--disable-libgomp \
+	--disable-libmudflap \
+	--disable-libmpx \
+	--disable-libquadmath \
+	--disable-libquadmath-support \
+	--disable-multilib || \
+	{
+		printf "\\tError configuring %s stage 1. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s stage 1. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s stage 1. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+	#
+	# End of GCC stage 1
+	#
+
+	#
+	# glibc stage 1
+	#
+	printf "\\tBuilding %s stage 1...\\n" "glibc-${GLIBC_VER}"
+if [[ -d "${GLIBC_SRCDIR}"/build ]] ; then
+
+	cd "${GLIBC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GLIBC_SRCDIR}"/build "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${GLIBC_SRCDIR}"/build/*
+else
+	mkdir -p "${GLIBC_SRCDIR}"/build || \
+	{
+		printf "\\tError creating %s.%s" \
+		"${GLIBC_SRCDIR}"/build "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	cd "${GLIBC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GLIBC_SRCDIR}"/build "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+fi
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_TARGET}" \
+	--with-binutils="${BARF_CROSS_BINDIR}"/bin/ \
+	--enable-kernel="${LINUX_VER}" \
+	--with-headers="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
+	--includedir="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
+	--libdir="${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib \
+	--with-__thread \
+	--with-tls \
+	--with-fp \
+	--enable-sanity-checks \
+	--disable-werror \
+	--disable-profile \
+	--without-cvs \
+	--without-gd \
+	--disable-timezone-tools \
+	--disable-debug || \
+	{
+		printf "\\tError configuring %s stage 1. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s stage 1. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s stage 1. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+	#
+	# End of glibc stage 1
+	#
+
+#
+# End of stage 1
+#
+
+#
+# Begin stage 2
+#
+
+	#
+	# Binutils stage 2
+	#
+	prepare_binutils
+
+	printf "\\tBuilding %s stage 2...\\n" "Binutils-${BINUTILS_VER}"
+
+	cd "${BINUTILS_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${BINUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${BINUTILS_SRCDIR}"/build/*
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_HOST}" \
+	--target="${BARF_TARGET}" \
+	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--enable-ld=yes \
+	--enable-gold=no \
+	--enable-lto \
+	--enable-plugins \
+	--disable-bootstrap \
+	--disable-werror \
+	--disable-shared \
+	--disable-nls \
+	--disable-multilib \
+	--disable-sim \
+	--disable-gdb || \
+	{
+		printf "\\tError configuring %s stage 2. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s stage 2. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s stage 2. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+	#
+	# End of Binutils stage 2
+	#
+
+	#
+	# GCC stage 2
+	#
+	prepare_gcc
+
+	printf "\\tBuilding %s stage 2...\\n" "GCC-${GCC_VER}"
+
+	cd "${GCC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GCC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${GCC_SRCDIR}"/build/*
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--with-cpu="${BARF_TARGET_CPU}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_HOST}" \
+	--target="${BARF_TARGET}" \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--with-local-prefix="${BARF_CROSS_BINDIR}"/sysroot \
+	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--enable-plugin \
+	--enable-lto \
+	--with-isl=no \
+	--with-cloog=no \
+	--enable-__cxa_atexit \
+	--enable-linker-build-id \
+	--enable-languages=c,c++ \
+	--enable-long-long \
+	--disable-bootstrap \
+	--disable-werror \
+	--disable-shared \
+	--disable-libatomic \
+	--disable-libsanitizer \
+	--disable-libssp \
+	--disable-libgomp \
+	--disable-libmudflap \
+	--disable-libmpx \
+	--disable-libquadmath \
+	--disable-libquadmath-support \
+	--disable-multilib || \
+	{
+		printf "\\tError configuring %s stage 2. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s stage 2. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s stage 2. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+	#
+	# End of GCC stage 2
+	#
+
+#
+# Begin final build
+#
+
+	#
+	# glibc final
+	#
+	printf "\\tBuilding final %s...\\n" "glibc-${GLIBC_VER}"
+
+	cd "${GLIBC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GLIBC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${GLIBC_SRCDIR}"/build/*
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_TARGET}" \
+	--with-binutils="${BARF_CROSS_BINDIR}"/bin/ \
+	--enable-kernel="${LINUX_VER}" \
+	--with-headers="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
+	--libdir="${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib \
+	--with-__thread \
+	--with-tls \
+	--with-fp \
+	--enable-sanity-checks \
+	--enable-werror \
+	--enable-stack-protector=strong \
+	--enable-bind-now \
+	--disable-profile \
+	--without-cvs \
+	--without-gd \
+	--disable-timezone-tools \
+	--disable-debug || \
+	{
+		printf "\\tError configuring final %s. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building final %s. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+
+	make check -j"${JOBS}" || \
+	{
+		printf "\\tTestsuite failure on final %s. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing final %s. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+	#
+	# End of glibc final
+	#
+
+	#
+	# Binutils final
+	#
+	prepare_binutils
+
+	printf "\\tBuilding final %s...\\n" "Binutils-${BINUTILS_VER}"
+
+	cd "${BINUTILS_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${BINUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${BINUTILS_SRCDIR}"/build/*
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_HOST}" \
+	--target="${BARF_TARGET}" \
+	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--enable-werror \
+	--enable-shared \
+	--enable-ld=yes \
+	--enable-gold=yes \
+	--enable-lto \
+	--enable-plugins \
+	--disable-nls \
+	--disable-multilib \
+	--disable-sim \
+	--disable-gdb || \
+	{
+		printf "\\tError configuring final %s. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building final %s. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+
+	make check -j"${JOBS}" || \
+	{
+		printf "\\tTestsuite failure on final %s. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing final %s. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
+	#
+	# End of Binutils final
+	#
+
+	#
+	# GCC final
+	#
+	prepare_gcc
+
+	printf "\\tBuilding final %s...\\n" "GCC-${GCC_VER}"
+
+	cd "${GCC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GCC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${GCC_SRCDIR}"/build/*
+
+	CFLAGS="${BARF_HOST_CFLAGS}" \
+	CXXFLAGS="${BARF_HOST_CXXFLAGS}" \
+	LDFLAGS="${BARF_HOST_LDFLAGS}" \
+	../configure \
+	--with-cpu="${BARF_TARGET_CPU}" \
+	--build="${BARF_HOST}" \
+	--host="${BARF_HOST}" \
+	--target="${BARF_TARGET}" \
+	--prefix="${BARF_CROSS_BINDIR}" \
+	--with-local-prefix="${BARF_CROSS_BINDIR}"/sysroot \
+	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--enable-lto \
+	--enable-plugin \
+	--with-isl=no \
+	--with-cloog=no \
+	--enable-werror \
+	--enable-shared \
+	--enable-libsanitizer \
+	--enable-libssp \
+	--enable-__cxa_atexit \
+	--enable-linker-build-id \
+	--enable-languages=c,c++ \
+	--enable-long-long \
+	--disable-libmpx \
+	--disable-multilib || \
+	{
+		printf "\\tError configuring final %s. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building final %s. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing final %s. Exiting.\\n" \
+		"GCC-${GCC_VER}" ; exit 1 ;
+	}
+	#
+	# End of final GCC
+	#
+}
+
+#
+# End of cross toolchain
+#
+
+#
+# This is where the rootfs building starts
+#
+
+# At least get a QEMU chroot environment going for testing
+build_qemu_chroot_init()
+{
+	#
+	# glibc for target rootfs
+	#
+	printf "\\tBuilding %s for target...\\n" "glibc-${GLIBC_VER}"
+
+	cd "${GLIBC_SRCDIR}"/build || \
+	{
+		printf "\\tError changing directory to %s.%s" \
+		"${GLIBC_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+	rm -rf "${GLIBC_SRCDIR}"/build/*
+
+	CFLAGS="${BARF_TARGET_CFLAGS}" \
+	CXXFLAGS="${BARF_TARGET_CXXFLAGS}" \
+	LDFLAGS="${BARF_TARGET_LDFLAGS}" \
+	../configure \
+	--prefix="${BARF_ROOTFS}"/usr \
+	--host="${BARF_TARGET}" \
+	--with-binutils="${BARF_CROSS_BINDIR}"/bin/ \
+	--enable-kernel="${LINUX_VER}" \
+	--with-headers="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
+	--with-__thread \
+	--with-tls \
+	--with-fp \
+	--enable-sanity-checks \
+	--enable-werror \
+	--enable-stack-protector=strong \
+	--enable-bind-now \
+	--disable-profile \
+	--without-cvs \
+	--without-gd \
+	--disable-debug || \
+	{
+		printf "\\tError configuring %s stage 3. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s stage 3. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s stage 3. Exiting.\\n" \
+		"glibc-${GLIBC_VER}" ; exit 1 ;
+	}
+	#
+	# End of glibc for target rootfs
+	#
+
+	#
+	# Bash
+	#
+	cd "${BASH_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${BASH_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+
+	CFLAGS="${BARF_TARGET_CFLAGS}" \
+	CXXFLAGS="${BARF_TARGET_CXXFLAGS}" \
+	LDFLAGS="${BARF_TARGET_LDFLAGS}" \
+	./configure \
+	--host="${BARF_TARGET}" \
+	--prefix="${BARF_ROOTFS}"/usr \
+	--bindir="${BARF_ROOTFS}"/bin || \
+	{
+		printf "\\tError configuring %s. Exiting.\\n" \
+		"Bash-${BASH_VER}_${BASH_PATCHLEVEL}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s. Exiting.\\n" \
+		"Bash-${BASH_VER}_${BASH_PATCHLEVEL}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s. Exiting.\\n" \
+		"Bash-${BASH_VER}_${BASH_PATCHLEVEL}" ; exit 1 ;
+	}
+	#
+	# End of Bash
+	#
+
+	#
+	# Coreutils
+	#
+	cd "${COREUTILS_SRCDIR}" || \
+	{
+		printf "\\tError changing directory to %s\\n\\t%s\\n" \
+		"${COREUTILS_SRCDIR}" "${REPORT_BUG_EXIT}" ; exit 1 ;
+	}
+
+	make distclean
+
+	CFLAGS="${BARF_TARGET_CFLAGS}" \
+	CXXFLAGS="${BARF_TARGET_CXXFLAGS}" \
+	LDFLAGS="${BARF_TARGET_LDFLAGS}" \
+	./configure \
+	--host="${BARF_TARGET}" \
+	--prefix="${BARF_ROOTFS}"/usr \
+	--enable-no-install-program="kill" || \
+	{
+		printf "\\tError configuring %s. Exiting.\\n" \
+		"Coreutils-${COREUTILS_VER}" ; exit 1 ;
+	}
+
+	make -j"${JOBS}" || \
+	{
+		printf "\\tError building %s. Exiting.\\n" \
+		"Coreutils-${COREUTILS_VER}" ; exit 1 ;
+	}
+
+	make install || \
+	{
+		printf "\\tError installing %s. Exiting.\\n" \
+		"Coreutils-${COREUTILS_VER}" ; exit 1 ;
+	}
+	#
+	# End of Coreutils
+	#
 }
 
 #
@@ -82,7 +981,7 @@ build_custom()
 # Example:
 # `cd` into the PKG_SRCDIR as you specified in your user config file
 # ./configure \
-# --prefix="${BARF_ROOTFS}"
+# --prefix="${BARF_CROSS_BINDIR}"
 # --any-options \
 # --you-need
 # make -j"${JOBS}"
@@ -94,11 +993,15 @@ sleep 0
 # Execute build
 #
 
+barf_toolchain
+
 # TODO
-# build_crosstool
+# build_qemu_chroot_init
+
+# TODO
 # build_rootfs
 
-build_custom
+# build_custom
 
 exit 0
 

@@ -6,7 +6,7 @@ This project is aimed at building a complete filesystem for ARM64 platforms, ent
 
 Barf; originated from NTU's sick Toolchain_Builder project, brings you an easily and fully customizable ARM64 powerhouse, designed specifically for you, from you. Edit easy-to-use variables, modify strings, configure and design your embedded your system, your way. This project is about YOU!
 
-Building a Cross Linux from Scratch (CLFS) system has never been easier. Forget about reading documentation on building cross compilers, configuring embedded systems, and those long, boring PDF pages. Barf makes this process easy for you by giving you the choice of freedom, while keeping simplicity in mind. Barf is written entirely in GNU Bash, and is fully customizable, with everything in one place. Barf handles everything from building the cross compiler (Crosstool-NG) to your system packages. A simple set of scripts for even the most complex embedded installs. No secrets, no magic. Want something changed? Do it yourself with ease!
+Building a Cross Linux from Scratch (CLFS) system has never been easier. Forget about reading documentation on building cross compilers, configuring embedded systems, and those long, boring PDF pages. Barf makes this process easy for you by giving you the choice of freedom, while keeping simplicity in mind. Barf is written entirely in GNU Bash, and is fully customizable, with everything in one place. Barf handles everything from building the cross compiler to your system packages. A simple set of scripts for even the most complex embedded installs. No secrets, no magic. Want something changed? Do it yourself with ease!
 
 ### Prerequisites:
 
@@ -17,7 +17,6 @@ flex bison libtool binutils gcc g++ glibc make autoconf automake autogen type fi
 ### Barf's current goals:
 
 - Verify all sources with a checksum
-- Build a toolchain (Crosstool-NG for now)
 - Linux Kernel with tested configs (Raspberry Pi 3)
 - Root filesystem
 
@@ -56,7 +55,7 @@ A: No, Barf does not build, use, or even download any of SystemD, nor any packag
 
 Q: Is Barf associated with the NSA at all?
 
-A: No. Barf is in no way affiliated, licensed, or endorsed by the NSA, nor any government agency for that matter. You could spend the time to add SELinux to this project if you wish.
+A: No. Barf is in no way affiliated, licensed, or endorsed by the NSA, nor any government agency for that matter. You could spend the time to add SELinux to your project if you wish, but that will never be included in this repository.
 
 Q: Is Barf secure?
 
