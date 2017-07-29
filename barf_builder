@@ -239,7 +239,35 @@ fi
 # Stage 2: Binutils -> GCC (More features such as LTO and threads)
 # Final: glibc -> Binutils -> GCC (Stage 2 + shared build, plus:
 # Additional security features, Gold linker, some testsuites, and -Werror)
+
 #
+# Current tree issues:
+#
+# lgcc_s:
+# Exec: ${BARF_TARGET}-ld -lgcc_s
+# Result: Cannot find -lgcc_s
+# Exec: ${BARF_TARGET}-ld -L${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib64 -lgcc_s
+# Result: Cannot find libc.so.6 for ${BARF_TARGET}
+# Fixed exec: $BARF_TARGET-ld -L${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib64 -rpath=${BARF_CROSS_BINDIR}/lib -lgcc_s
+# Result: OK.
+#
+# lgcc:
+# Exec: ${BARF_TARGET}-ld -lgcc
+# Result: Cannot find -lgcc
+# Exec: ${BARF_TARGET}-ld -L${BARF_CROSS_BINDIR}/lib/gcc/${BARF_TARGET}/6.4.0 -lgcc
+# Result: OK.
+#
+# lgcc:
+# Exec: ${BARF_TARGET}-ld -lc
+# Result: Cannot find -lc
+# Exec: ${BARF_TARGET}-ld -L${BARF_CROSS_BINDIR}${BARF_TARGET}/lib -lc
+# Result: OK.
+#
+# ld search dirs:
+# ${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib{,lib64}
+#
+# All pass fine with no additional flags for ${BARF_TARGET}-gcc
+
 # This (long) process really makes sure the toolchain is not fragile as we
 # use it for everything we can, outside the QEMU chroot.
 barf_toolchain()
@@ -265,12 +293,6 @@ fi
 
 	ARCH="${BARF_TARGET_ARCH}" make headers_check
 	ARCH="${BARF_TARGET_ARCH}" make INSTALL_HDR_PATH="${LINUX_SRCDIR}/DESTDIR" headers_install
-
-	mkdir -p "${BARF_CROSS_BINDIR}"/include || \
-	{
-		printf "\\tError creating %s. Exiting.\\n" \
-		"${BARF_CROSS_BINDIR}"/include ; exit 1 ;
-	}
 
 	cp -pr "${LINUX_SRCDIR}"/DESTDIR/include/* "${BARF_CROSS_BINDIR}"/sysroot/usr/include/ || \
 	{
