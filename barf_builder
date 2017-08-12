@@ -236,38 +236,17 @@ fi
 # Final: glibc -> Binutils -> GCC (Stage 2 + shared build, plus:
 # Additional security features, Gold linker, some testsuites, and -Werror)
 
-#
-# Current tree issues:
-#
-# lgcc_s:
-# Exec: ${BARF_TARGET}-ld -lgcc_s
-# Result: Cannot find -lgcc_s
-# Exec: ${BARF_TARGET}-ld -L${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib64 -lgcc_s
-# Result: Cannot find libc.so.6 for ${BARF_TARGET}
-# Fixed exec: $BARF_TARGET-ld -L${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib64 -rpath=${BARF_CROSS_BINDIR}/lib -lgcc_s
-# Result: OK.
-#
-# lgcc:
-# Exec: ${BARF_TARGET}-ld -lgcc
-# Result: Cannot find -lgcc
-# Exec: ${BARF_TARGET}-ld -L${BARF_CROSS_BINDIR}/lib/gcc/${BARF_TARGET}/6.4.0 -lgcc
-# Result: OK.
-#
-# lgcc:
-# Exec: ${BARF_TARGET}-ld -lc
-# Result: Cannot find -lc
-# Exec: ${BARF_TARGET}-ld -L${BARF_CROSS_BINDIR}${BARF_TARGET}/lib -lc
-# Result: OK.
-#
-# ld search dirs:
-# ${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib{,lib64}
-#
-# All pass fine with no additional flags for ${BARF_TARGET}-gcc
-
 # This (long) process really makes sure the toolchain is not fragile as we
 # use it for everything we can, outside the QEMU chroot.
 barf_toolchain()
 {
+	# Binutils --with-lib-path directories
+	# We really need to not spread this out so much...
+	SEARCH_DIR_1="${BARF_CROSS_BINDIR}/lib:${BARF_CROSS_BINDIR}/lib64"
+	SEARCH_DIR_2="${BARF_CROSS_BINDIR}/lib/gcc/${BARF_TARGET}/${GCC_VER}"
+	SEARCH_DIR_3="${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib"
+	SEARCH_DIR_4="${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib64"
+
 	#
 	# Kernel headers
 	#
@@ -341,6 +320,7 @@ fi
 	--host="${BARF_HOST}" \
 	--target="${BARF_TARGET}" \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}:${SEARCH_DIR_4}" \
 	--enable-ld=yes \
 	--enable-gold=no \
 	--disable-bootstrap \
@@ -562,6 +542,7 @@ fi
 	--host="${BARF_HOST}" \
 	--target="${BARF_TARGET}" \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}:${SEARCH_DIR_4}" \
 	--enable-ld=yes \
 	--enable-gold=no \
 	--enable-lto \
@@ -712,7 +693,7 @@ fi
 		"glibc-${GLIBC_VER}" ; exit 1 ;
 	}
 
-	# TODO: Fix -lc -lgcc_s and -lgcc errors
+	# TODO: Fix some undefined references to pthread
 	#make check -j"${JOBS}" || \
 	#{
 	#	printf "\\tTestsuite failure on final %s. Exiting.\\n" \
@@ -753,6 +734,7 @@ fi
 	--host="${BARF_HOST}" \
 	--target="${BARF_TARGET}" \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}:${SEARCH_DIR_4}" \
 	--enable-werror \
 	--enable-shared \
 	--enable-ld=yes \
@@ -774,12 +756,11 @@ fi
 		"Binutils-${BINUTILS_VER}" ; exit 1 ;
 	}
 
-	# TODO: Fix -lc -lgcc_s and -lgcc errors
-	#make check -j"${JOBS}" || \
-	#{
-	#	printf "\\tTestsuite failure on final %s. Exiting.\\n" \
-	#	"Binutils-${BINUTILS_VER}" ; exit 1 ;
-	#}
+	make check -j"${JOBS}" || \
+	{
+		printf "\\tTestsuite failure on final %s. Exiting.\\n" \
+		"Binutils-${BINUTILS_VER}" ; exit 1 ;
+	}
 
 	make install || \
 	{
