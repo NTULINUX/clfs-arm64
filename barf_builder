@@ -51,8 +51,8 @@ unset LDFLAGS
 # cs188 FTW!
 # (Normies, please ignore this entire comment section)
 printf "\\n\\tChecking for pre-existing config files...\\n"
-if [[ -f "${BARF_INTERNAL_CONFIG}" && -f "${BARF_INTERNAL_CONFIG}" && \
-	-r "${BARF_USER_CONFIG}" && -r "${BARF_USER_CONFIG}" ]] ; then
+if [[ -f "${BARF_INTERNAL_CONFIG}" && -f "${BARF_USER_CONFIG}" && \
+	-r "${BARF_INTERNAL_CONFIG}" && -r "${BARF_USER_CONFIG}" ]] ; then
 	printf "\\tConfig files found. Loading...\\n"
 	# shellcheck source=/dev/null
 	source "${BARF_INTERNAL_CONFIG}"
@@ -60,17 +60,13 @@ if [[ -f "${BARF_INTERNAL_CONFIG}" && -f "${BARF_INTERNAL_CONFIG}" && \
 	# shellcheck source=/dev/null
 	source "${BARF_USER_CONFIG}"
 	printf "\\tUser config loaded.\\n"
+elif [[ -f "${BARF_USER_CONFIG}" && ! -f "${BARF_INTERNAL_CONFIG}" ]] ; then
+	printf "\\tUnable to locate internal config file.
+\\tDid you run barf_prep yet? Exiting...\\n"
+	exit 1
 else
 	# More fatal than Naegleria Fowleri, srs business
 	printf "\\tExtremely fatal error: Config files not found or readable.\\n\\tExiting.\\n"
-	exit 1
-fi
-
-if [[ -n "${BARF_PREP_COMPLETE}" && "${BARF_PREP_COMPLETE}" -eq 1 ]] ; then
-	printf "\\tBARF_PREP_COMPLETE defined and equal to 1.\\n"
-else
-	printf "\\tBARF_PREP_COMPLETE not defined or invalid.
-\\tDid you run barf_prep yet? Exiting...\\n"
 	exit 1
 fi
 
