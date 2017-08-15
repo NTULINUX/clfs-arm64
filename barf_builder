@@ -213,6 +213,7 @@ fi
 # Cross toolchain
 #
 
+printf "\\n\\tCreating filesystem hierarchy for cross toolchain if needed...\\n"
 if [[ ! -d "${BARF_CROSS_BINDIR}" ]] ; then
 	mkdir -p "${BARF_CROSS_BINDIR}" || \
 	{
@@ -229,23 +230,58 @@ if [[ ! -d "${BARF_CROSS_BINDIR}"/sysroot/usr/include ]] ; then
 	}
 fi
 
+# Create a symlink to lib64, much like the rootfs
+# Hopefully this works and fixes some problems, as well as cut down the clutter.
+if [[ ! -d "${BARF_CROSS_BINDIR}"/lib64 ]] ; then
+	mkdir -p "${BARF_CROSS_BINDIR}"/lib64 || \
+	{
+		printf "\\tFailed to create %s Exiting.\\n" \
+		"${BARF_CROSS_BINDIR}"/lib64 ; exit 1 ;
+	}
+
+	rm -rf "${BARF_CROSS_BINDIR}"/lib
+
+	ln -sfv "${BARF_CROSS_BINDIR}"/lib64 "${BARF_CROSS_BINDIR}"/lib || \
+	{
+		printf "\\tFailed to create symlink to %s Exiting.\\n" \
+		"${BARF_CROSS_BINDIR}"/lib64 ; exit 1 ;
+	}
+fi
+
+# GCC only builds if Glibc's libdir is inside the target arch directory
+# so we make a lib symlink here too. I'd like to fix that though.
+if [[ ! -d "${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib64 ]] ; then
+	mkdir -p "${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib64 || \
+	{
+		printf "\\tFailed to create %s Exiting.\\n" \
+		"${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib64 ; exit 1 ;
+	}
+
+	rm -rf "${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib
+
+	ln -sfv "${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib64 "${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib || \
+	{
+		printf "\\tFailed to create symlink to %s Exiting.\\n" \
+		"${BARF_CROSS_BINDIR}"/lib64 ; exit 1 ;
+	}
+fi
+
 # Cross toolchain build order:
 # Kernel headers, stage 1, stage 2, final
-# Stage 1: Binutils -> GCC -> glibc (Initial static build, minimal options)
-# Stage 2: Binutils -> GCC (More features such as LTO and threads)
-# Final: glibc -> Binutils -> GCC (Stage 2 + shared build, plus:
-# Additional security features, Gold linker, some testsuites, and -Werror)
+# Stage 1: Binutils -> GCC -> glibc
+# Stage 2: Binutils -> GCC
+# Final: glibc -> Binutils -> GCC
 
 # This (long) process really makes sure the toolchain is not fragile as we
 # use it for everything we can, outside the QEMU chroot.
 barf_toolchain()
 {
-	# Binutils --with-lib-path directories
-	# We really need to not spread this out so much...
-	SEARCH_DIR_1="${BARF_CROSS_BINDIR}/lib:${BARF_CROSS_BINDIR}/lib64"
-	SEARCH_DIR_2="${BARF_CROSS_BINDIR}/lib/gcc/${BARF_TARGET}/${GCC_VER}"
-	SEARCH_DIR_3="${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib"
-	SEARCH_DIR_4="${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib64"
+	SEARCH_DIR_1="${BARF_CROSS_BINDIR}/lib64"
+	SEARCH_DIR_2="${BARF_CROSS_BINDIR}/lib64/gcc/${BARF_TARGET}/${GCC_VER}"
+	# Can there be someway to avoid the following line and have
+	# Glibc sitting in SEARCH_DIR_1 like everything else?
+	# Perhaps symlink SEARCH_DIR_1 to SEARCH_DIR_3? Seems dangerous.
+	SEARCH_DIR_3="${BARF_CROSS_BINDIR}/${BARF_TARGET}/lib64"
 
 	#
 	# Kernel headers
@@ -320,14 +356,14 @@ fi
 	--host="${BARF_HOST}" \
 	--target="${BARF_TARGET}" \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
-	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}:${SEARCH_DIR_4}" \
+	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}" \
+	--libdir="${BARF_CROSS_BINDIR}"/lib64 \
+	--enable-werror \
+	--enable-shared \
 	--enable-ld=yes \
-	--enable-gold=no \
-	--disable-bootstrap \
-	--disable-werror \
-	--disable-shared \
-	--disable-lto \
-	--disable-plugins \
+	--enable-gold=yes \
+	--enable-lto \
+	--enable-plugins \
 	--disable-nls \
 	--disable-multilib \
 	--disable-sim \
@@ -399,18 +435,20 @@ fi
 	--prefix="${BARF_CROSS_BINDIR}" \
 	--with-local-prefix="${BARF_CROSS_BINDIR}"/sysroot \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--libdir="${BARF_CROSS_BINDIR}"/lib64 \
 	--enable-__cxa_atexit \
 	--with-isl=no \
 	--with-cloog=no \
 	--enable-linker-build-id \
 	--enable-languages=c \
+	--enable-lto \
+	--enable-plugin \
 	--enable-threads=no \
 	--without-headers \
 	--disable-libatomic \
 	--disable-bootstrap \
 	--disable-werror \
 	--disable-shared \
-	--disable-lto \
 	--disable-libsanitizer \
 	--disable-libssp \
 	--disable-libgomp \
@@ -478,12 +516,12 @@ fi
 	--enable-kernel="${LINUX_VER}" \
 	--with-headers="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
 	--includedir="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
-	--libdir="${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib \
+	--libdir="${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib64 \
 	--with-__thread \
 	--with-tls \
 	--with-fp \
 	--enable-sanity-checks \
-	--disable-werror \
+	--enable-werror \
 	--disable-profile \
 	--without-cvs \
 	--without-gd \
@@ -542,14 +580,14 @@ fi
 	--host="${BARF_HOST}" \
 	--target="${BARF_TARGET}" \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
-	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}:${SEARCH_DIR_4}" \
+	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}" \
+	--libdir="${BARF_CROSS_BINDIR}"/lib64 \
+	--enable-werror \
+	--enable-shared \
 	--enable-ld=yes \
-	--enable-gold=no \
+	--enable-gold=yes \
 	--enable-lto \
 	--enable-plugins \
-	--disable-bootstrap \
-	--disable-werror \
-	--disable-shared \
 	--disable-nls \
 	--disable-multilib \
 	--disable-sim \
@@ -601,25 +639,20 @@ fi
 	--prefix="${BARF_CROSS_BINDIR}" \
 	--with-local-prefix="${BARF_CROSS_BINDIR}"/sysroot \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
-	--enable-plugin \
+	--libdir="${BARF_CROSS_BINDIR}"/lib64 \
 	--enable-lto \
+	--enable-plugin \
 	--with-isl=no \
 	--with-cloog=no \
+	--enable-werror \
+	--enable-shared \
+	--enable-libsanitizer \
+	--enable-libssp \
 	--enable-__cxa_atexit \
 	--enable-linker-build-id \
 	--enable-languages=c,c++ \
 	--enable-long-long \
-	--disable-bootstrap \
-	--disable-werror \
-	--disable-shared \
-	--disable-libatomic \
-	--disable-libsanitizer \
-	--disable-libssp \
-	--disable-libgomp \
-	--disable-libmudflap \
 	--disable-libmpx \
-	--disable-libquadmath \
-	--disable-libquadmath-support \
 	--disable-multilib || \
 	{
 		printf "\\tError configuring %s stage 2. Exiting.\\n" \
@@ -669,14 +702,19 @@ fi
 	--with-binutils="${BARF_CROSS_BINDIR}"/bin/ \
 	--enable-kernel="${LINUX_VER}" \
 	--with-headers="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
-	--libdir="${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib \
+	--includedir="${BARF_CROSS_BINDIR}"/sysroot/usr/include \
+	--libdir="${BARF_CROSS_BINDIR}"/"${BARF_TARGET}"/lib64 \
 	--with-__thread \
 	--with-tls \
 	--with-fp \
 	--enable-sanity-checks \
+	--enable-hardcoded-path-in-tests \
 	--enable-werror \
+	--enable-stackguard-randomization \
 	--enable-stack-protector=strong \
 	--enable-bind-now \
+	--disable-build-nscd \
+	--disable-nscd \
 	--disable-profile \
 	--without-cvs \
 	--without-gd \
@@ -693,7 +731,10 @@ fi
 		"glibc-${GLIBC_VER}" ; exit 1 ;
 	}
 
-	# TODO: Fix some undefined references to pthread
+	# Testsuite results:
+	# 1 FAIL
+	# 659 PASS
+	# 8 XFAIL
 	#make check -j"${JOBS}" || \
 	#{
 	#	printf "\\tTestsuite failure on final %s. Exiting.\\n" \
@@ -734,7 +775,7 @@ fi
 	--host="${BARF_HOST}" \
 	--target="${BARF_TARGET}" \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
-	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}:${SEARCH_DIR_4}" \
+	--with-lib-path="${SEARCH_DIR_1}:${SEARCH_DIR_2}:${SEARCH_DIR_3}" \
 	--enable-werror \
 	--enable-shared \
 	--enable-ld=yes \
@@ -756,6 +797,7 @@ fi
 		"Binutils-${BINUTILS_VER}" ; exit 1 ;
 	}
 
+	# No issues.
 	make check -j"${JOBS}" || \
 	{
 		printf "\\tTestsuite failure on final %s. Exiting.\\n" \
@@ -798,6 +840,7 @@ fi
 	--prefix="${BARF_CROSS_BINDIR}" \
 	--with-local-prefix="${BARF_CROSS_BINDIR}"/sysroot \
 	--with-sysroot="${BARF_CROSS_BINDIR}"/sysroot \
+	--libdir="${BARF_CROSS_BINDIR}"/lib64 \
 	--enable-lto \
 	--enable-plugin \
 	--with-isl=no \

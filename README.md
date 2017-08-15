@@ -6,19 +6,19 @@ This project is aimed at building a complete filesystem for ARM64 platforms, ent
 
 Barf; originated from NTU's sick Toolchain_Builder project, brings you an easily and fully customizable ARM64 powerhouse, designed specifically for you, from you. Edit easy-to-use variables, modify strings, configure and design your embedded your system, your way. This project is about YOU!
 
-Building a Cross Linux from Scratch (CLFS) system has never been easier. Forget about reading documentation on building cross compilers, configuring embedded systems, and those long, boring PDF pages. Barf makes this process easy for you by giving you the choice of freedom, while keeping simplicity in mind. Barf is written entirely in GNU Bash, and is fully customizable, with everything in one place. Barf handles everything from building the cross compiler to your system packages. A simple set of scripts for even the most complex embedded installs. No secrets, no magic. Want something changed? Do it yourself with ease!
+Building a Cross Linux from Scratch (CLFS) system has never been easier. You no longer have to scroll through pages of documentation to build an embedded Linux system from scratch. Barf makes this process easy for you by giving you the choice of freedom, while keeping simplicity in mind. Barf is written entirely in GNU Bash, and is fully customizable, with everything in one place. Barf handles everything from building the cross compiler to your system packages. A simple set of scripts for even the most complex embedded installs. No secrets, no magic. Want something changed? Do it yourself with ease!
 
 ### Prerequisites:
 
-A complete working native toolchain:
+Bash and a complete working native toolchain:
 
-flex bison libtool binutils gcc g++ glibc make autoconf automake autogen type file bc elfutils sed gawk
+flex bison libtool binutils gcc g++ glibc make autoconf automake type file bc elfutils sed gawk patch
 
 ### Barf's current goals:
 
 - Verify all sources with a checksum
-- Linux Kernel with tested configs (Raspberry Pi 3)
-- Root filesystem
+- Compile a Linux Kernel with provided tested configs (Raspberry Pi 3)
+- Build a root filesystem
 
 ### How to use Barf:
 
@@ -47,11 +47,11 @@ A: Bash is 100% open source, easy to use, and is licensed under the GPL which we
 
 Q: What's the point of this? Can't I just read into CLFS?
 
-A: Absolutely! CLFS is a great starting point to learn how to build embedded Linux systems from scratch. Say you want to automate the build process, easily add packages to your image, or be able to create a new root filesystem image on the fly, without having to go through all of the CLFS documentation again and do everything by hand. Barf gives you the speed and simplicity of CLFS, without all the reading.
+A: Absolutely! CLFS is a great starting point to learn how to build embedded Linux systems from scratch. Say you want to automate the build process, easily add packages to your image, or be able to create a new root filesystem image on the fly, without having to go through all of the CLFS documentation again and do everything by hand. As of this writing, there is actually no documentation for CLFS on the ARM64 architecture. While I hate to brag, Barf is your best bet.
 
 Q: Does Barf use SystemD?
 
-A: No, Barf does not build, use, or even download any of SystemD, nor any packages that depend on it. Any pull requests or suggestions about adding it will be denied. SystemD is evil and must be avoided. Barf uses OpenRC and Eudev; a fork of udev that actually has SystemD stripped from it's code base. You can view the source code of eudev and it's lack of backdoors here: https://github.com/gentoo/eudev
+A: No, Barf does not build, use, or even download any of SystemD, nor any packages that depend on it. Any pull requests or suggestions about adding it will be denied. SystemD is evil and must be avoided. Barf uses OpenRC and eudev; a fork of udev that actually has SystemD stripped from it's code base. You can view the source code of eudev and it's lack of backdoors here: https://github.com/gentoo/eudev
 
 Q: Is Barf associated with the NSA at all?
 
